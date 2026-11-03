@@ -1,0 +1,65 @@
+# Local development services: PostgreSQL, Redis and Mailpit (the apps run on the host).
+#
+#   pnpm dev:services        # docker compose up -d
+#   pnpm dev:services:down   # docker compose down   (add -v to wipe the data volumes)
+#
+# Values come from the root .env (copied from .env.example by `pnpm run setup`); the defaults
+# below match apps/*/.env.example. Ports are bound to 127.0.0.1 only.
+# The full production stack lives in docker-compose.prod.yml (see docs/DEPLOYMENT.md).
+
+name: farmacias
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18+ images keep the data under /var/lib/postgresql/<major>/docker.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    # AOF persistence; `noeviction` is required by BullMQ (jobs must never be evicted).
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.33
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025" # SMTP (SMTP_URL=smtp://localhost:1025)
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025" # Inbox UI: http://localhost:8025
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:

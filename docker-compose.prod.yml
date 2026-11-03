@@ -1,0 +1,246 @@
+# Full production-like stack built from the Dockerfiles (single host). See docs/DEPLOYMENT.md.
+#
+#   cp docker/.env.example docker/.env   # fill POSTGRES_PASSWORD, BETTER_AUTH_SECRET, SMTP_URL...
+#   docker compose --env-file docker/.env -f docker-compose.prod.yml up -d --build
+#   # Podman: docker-compose ... --profile demo up -d --no-build   (demo adds Mailpit)
+#
+# Startup order: postgres (healthy) -> migrate (runs once, exits 0) -> server + worker
+# (redis healthy) -> admin + mobile-web (server healthy). Each service only receives the
+# variables it needs, interpolated from docker/.env (no shared env_file, so secrets do not leak across services).
+# Project name `farmacias-prod` keeps its containers/volumes apart from the dev services
+# (docker-compose.yml, project `farmacias`) when both run on the same machine.
+
+name: farmacias-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-hardening: &hardening
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-observability-env: &observability-env
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+
+x-infra-env: &infra-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in docker/.env}@postgres:5432/${POSTGRES_DB:-app}
+  REDIS_URL: redis://redis:6379
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in docker/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    shm_size: 128mb
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging: *logging
+
+  redis:
+    image: redis:8.10-alpine
+    restart: unless-stopped
+    # AOF persistence; `noeviction` is required by BullMQ (jobs must never be evicted).
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    logging: *logging
+
+  # One-off job: `prisma migrate deploy`. server/worker only start after it exits with 0.
+  migrate:
+    image: ${IMAGE_PREFIX:-farmacias}-migrate:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/migrate.Dockerfile
+    <<: *hardening
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in docker/.env}@postgres:5432/${POSTGRES_DB:-app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    logging: *logging
+
+  server:
+    image: ${IMAGE_PREFIX:-farmacias}-server:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    <<: *hardening
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      <<: [*observability-env, *infra-env]
+      HOST: 0.0.0.0
+      PORT: 4000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in docker/.env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in docker/.env}
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:?Set TRUSTED_ORIGINS in docker/.env}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+    ports:
+      - "${SERVER_PORT:-4000}:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Graceful shutdown: drains HTTP requests, closes Redis/Postgres (25 s internal limit).
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *logging
+
+  worker:
+    image: ${IMAGE_PREFIX:-farmacias}-worker:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    <<: *hardening
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      <<: [*observability-env, *infra-env]
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL in docker/.env}
+      EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM in docker/.env}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
+      WORKER_HEALTH_PORT: 4100
+    # Health endpoint for host-side monitoring only (loopback; the worker serves no traffic).
+    ports:
+      - "127.0.0.1:${WORKER_PORT:-4100}:4100"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    # Graceful shutdown: finishes running jobs (20 s drain, 27 s internal limit).
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    logging: *logging
+
+  admin:
+    image: ${IMAGE_PREFIX:-farmacias}-admin:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        API_INTERNAL_URL: http://server:4000
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    <<: *hardening
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://server:4000
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    ports:
+      - "${ADMIN_PORT:-3001}:3001"
+    depends_on:
+      server:
+        condition: service_healthy
+    stop_grace_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *logging
+
+  # Web build of the Expo resident app (static export served by Caddy). Caddy proxies
+  # /api/auth/* and /trpc/* to the server, so the browser only talks to this origin.
+  mobile-web:
+    image: ${IMAGE_PREFIX:-farmacias}-mobile-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: apps/mobile/Dockerfile.web
+      args:
+        # Inlined in the browser bundle at build time.
+        EXPO_PUBLIC_SENTRY_DSN: ${EXPO_PUBLIC_SENTRY_DSN:-}
+    <<: *hardening
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      API_UPSTREAM: http://server:4000
+    ports:
+      - "${MOBILE_WEB_PORT:-8080}:8080"
+    depends_on:
+      server:
+        condition: service_healthy
+    stop_grace_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging: *logging
+
+  # Demo/staging only (`--profile demo`): catches every email in Mailpit instead of a real SMTP
+  # provider. Use SMTP_URL=smtp://mailpit:1025; inbox at http://localhost:8025 (loopback only).
+  mailpit:
+    image: axllent/mailpit:v1.33
+    profiles: ["demo"]
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging: *logging
+
+volumes:
+  postgres-data:
+  redis-data:
