@@ -1,0 +1,33 @@
+{
+  "name": "@repo/tailwind-config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Preset compartido de Tailwind CSS 3.4 (NativeWind 4) y tokens de diseño.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./preset": "./preset.js",
+    "./tokens": {
+      "types": "./src/tokens.d.ts",
+      "default": "./src/tokens.js"
+    }
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo node_modules dist coverage"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/tsconfig": "workspace:*",
+    "eslint": "catalog:",
+    "nativewind": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "tailwindcss": "^3.4.0",
+    "nativewind": "^4.2.0"
+  }
+}
