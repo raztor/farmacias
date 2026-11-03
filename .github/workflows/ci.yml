@@ -60,20 +60,88 @@ jobs:
           TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
           SKIP_ENV_VALIDATION: "true"
 
+  integration:
+    name: Integración (PostgreSQL) y cobertura de servicios
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Admin connection: each run creates, migrates (prisma migrate deploy) and drops its own
+      # database (packages/api/vitest.integration.config.ts). Without it the run fails in CI.
+      TEST_DATABASE_URL: postgresql://app:app@localhost:5432/app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Integration tests (PostgreSQL real)
+        run: pnpm test:integration
+
+      - name: Cobertura de servicios (umbral v8 en *.service.ts)
+        run: pnpm --filter @repo/api test:coverage
+
+      - name: Resumen de cobertura
+        if: ${{ always() && hashFiles('packages/api/coverage/coverage-summary.json') != '' }}
+        run: >-
+          node -e "const t = require('./packages/api/coverage/coverage-summary.json').total;
+          const rows = ['lines', 'statements', 'functions', 'branches'].map((k) => '| ' + k + ' | ' + t[k].pct + '% |');
+          console.log(['### Cobertura @repo/api (unitarias)', '', '| Métrica | % |', '| --- | --- |', ...rows].join('\n'))"
+          >> "$GITHUB_STEP_SUMMARY"
+
   e2e:
-    name: E2E (Playwright, admin + web de la app)
+    name: E2E (Playwright, stack completo, matriz de navegadores)
     needs: quality
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    # Same infrastructure as docker-compose.yml, as job services (docs/validation/e2e.md).
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
-      # admin: rewrites point to a local API (not started: the smoke specs do not call it).
-      API_INTERNAL_URL: http://localhost:4000
-      SKIP_ENV_VALIDATION: "true"
-      # Expo web export: empty API URL = same origin (production behaviour behind Caddy).
-      EXPO_PUBLIC_API_URL: ""
+      # apps/e2e/src/scripts/e2e-stack.ts: migrate + seed the dedicated `farmacias_e2e` database,
+      # build server/worker/admin/web export, start them and run every Playwright project.
+      E2E_SERVICES: external
+      E2E_DATABASE_URL: postgresql://app:app@127.0.0.1:5432/farmacias_e2e
+      E2E_REDIS_URL: redis://127.0.0.1:6379/1
+      # Also run on the Google Chrome and Microsoft Edge preinstalled on ubuntu-latest (RNF-03).
+      E2E_BRANDED_BROWSERS: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
       EXPO_NO_TELEMETRY: "1"
-      # Playwright starts `next start` (:3001) and the static server for the export (:8081).
-      E2E_START_SERVERS: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -88,26 +156,26 @@ jobs:
           key: turbo-${{ runner.os }}-e2e-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-e2e-
 
-      - name: Install Playwright (Chromium)
-        run: pnpm --filter @repo/e2e exec playwright install --with-deps chromium
+      - name: Install Playwright (Chromium, Firefox, WebKit)
+        run: pnpm --filter @repo/e2e exec playwright install --with-deps chromium firefox webkit
 
-      - name: Build admin
-        run: pnpm turbo run build --filter=@repo/admin
+      - name: Run E2E (stack completo)
+        run: pnpm --filter @repo/e2e e2e:full
 
-      - name: Export web de la app (apps/mobile/dist/web)
-        run: pnpm --filter @repo/mobile export:web
+      - name: Resumen de la matriz de navegadores
+        if: ${{ always() && hashFiles('apps/e2e/test-results/results.json') != '' }}
+        run: node apps/e2e/src/scripts/matrix-summary.ts apps/e2e/test-results/results.json >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Run E2E tests
-        run: pnpm turbo run test:e2e --filter=@repo/e2e
-
-      - name: Upload Playwright report
+      - name: Upload Playwright report and stack logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
+          include-hidden-files: true
           path: |
             apps/e2e/playwright-report
             apps/e2e/test-results
+            apps/e2e/.cache/stack-logs
           retention-days: 7
 
   docker:
