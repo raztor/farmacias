@@ -2,6 +2,7 @@ import type { PrismaClient } from "@repo/db";
 import { type AppLogger, noopLogger, ROLES } from "@repo/shared";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
+import { accessControl, AUTH_ROLES } from "./access-control";
 import { AuthConfigError } from "./auth-config";
 import { type AuthSession, type AuthUser, createAuth, type CreateAuthOptions } from "./create-auth";
 
@@ -9,6 +10,11 @@ const SECRET = "test-secret-with-at-least-32-characters!!";
 
 /** The Prisma adapter is lazy: no query runs while building the instance. */
 const fakeDb = {} as PrismaClient;
+
+/** Enough of Prisma for endpoints that open a transaction before failing validation. */
+const fakeTransactionalDb = {
+  $transaction: (run: (tx: unknown) => Promise<unknown>) => run(fakeDb),
+} as unknown as PrismaClient;
 
 function buildAuth(overrides: Partial<CreateAuthOptions> = {}) {
   return createAuth({
@@ -34,18 +40,35 @@ const createdUser = {
   emailVerified: false,
   createdAt: new Date(),
   updatedAt: new Date(),
-  role: ROLES.user,
+  role: ROLES.resident,
 };
 
 describe("createAuth", () => {
-  it("configures email and password with the shared password policy", () => {
+  it("enables email and password sign-in with the shared password policy", () => {
     const { emailAndPassword } = buildAuth().options;
 
     expect(emailAndPassword).toMatchObject({
       enabled: true,
-      autoSignIn: true,
       minPasswordLength: 8,
       maxPasswordLength: 128,
+    });
+  });
+
+  it("disables public sign-up: accounts are preregistered", async () => {
+    const auth = buildAuth({ db: fakeTransactionalDb });
+    expect(auth.options.emailAndPassword.disableSignUp).toBe(true);
+
+    const response = await auth.handler(
+      new Request("http://localhost:4000/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "http://localhost:8081" },
+        body: JSON.stringify({ name: "Ana", email: "ana@example.cl", password: "12345678" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "EMAIL_PASSWORD_SIGN_UP_DISABLED",
     });
   });
 
@@ -66,12 +89,17 @@ describe("createAuth", () => {
     expect(trustedOrigins).toEqual(["http://localhost:8081", "http://localhost:3001", "bnp://"]);
   });
 
-  it("registers the expo and admin plugins with the shared roles", () => {
+  it("registers the expo and admin plugins with the application roles", () => {
     const { plugins } = buildAuth().options;
     const adminPlugin = plugins.find((plugin) => plugin.id === "admin");
 
     expect(plugins.map((plugin) => plugin.id)).toEqual(["expo", "admin"]);
-    expect(adminPlugin?.options).toMatchObject({ defaultRole: "user", adminRoles: ["admin"] });
+    expect(adminPlugin?.options).toMatchObject({
+      defaultRole: "resident",
+      adminRoles: ["admin"],
+      roles: AUTH_ROLES,
+      ac: accessControl,
+    });
   });
 
   it("enables secure cookies and the database rate limiter only in production", () => {

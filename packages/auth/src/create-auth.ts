@@ -3,6 +3,7 @@ import type { PrismaClient } from "@repo/db";
 import {
   APP_NAME,
   type AppLogger,
+  DEFAULT_ROLE,
   noopLogger,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
@@ -12,6 +13,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth/minimal";
 import { admin } from "better-auth/plugins";
 
+import { accessControl, AUTH_ROLES } from "./access-control";
 import {
   assertAuthSecret,
   AUTH_COOKIE_PREFIX,
@@ -35,15 +37,19 @@ export type CreateAuthOptions = {
   trustedOrigins: readonly string[];
   /** Enables secure cookies and the database-backed rate limiter. */
   isProduction: boolean;
-  /** Runs after a user is created. Its errors are logged and never fail the sign-up. */
+  /** Runs after a user is created (seed, admin endpoints). Its errors are logged, never thrown. */
   onUserCreated?: OnUserCreated | undefined;
   /** Structured logger for Better Auth internals and hook failures. */
   logger?: AppLogger | undefined;
 };
 
 /**
- * Creates the Better Auth server instance: email + password, Prisma persistence,
- * `expo()` for the mobile app and `admin()` for roles, bans and impersonation.
+ * Creates the Better Auth server instance: email + password sign-in, Prisma persistence,
+ * `expo()` for the mobile app and `admin()` with the app's access control (resident, operator,
+ * admin).
+ *
+ * Public sign-up is disabled (`disableSignUp`): accounts are preregistered (seed or
+ * `auth.api.createUser`), so `POST /api/auth/sign-up/email` always fails.
  */
 export function createAuth(options: CreateAuthOptions) {
   const logger = options.logger ?? noopLogger;
@@ -60,7 +66,7 @@ export function createAuth(options: CreateAuthOptions) {
     database: prismaAdapter(options.db, { provider: "postgresql" }),
     emailAndPassword: {
       enabled: true,
-      autoSignIn: true,
+      disableSignUp: true,
       minPasswordLength: PASSWORD_MIN_LENGTH,
       maxPasswordLength: PASSWORD_MAX_LENGTH,
     },
@@ -85,7 +91,15 @@ export function createAuth(options: CreateAuthOptions) {
     },
     logger: toBetterAuthLogger(logger, options.isProduction),
     telemetry: { enabled: false },
-    plugins: [expo(), admin({ defaultRole: ROLES.user, adminRoles: [ROLES.admin] })],
+    plugins: [
+      expo(),
+      admin({
+        ac: accessControl,
+        roles: AUTH_ROLES,
+        defaultRole: DEFAULT_ROLE,
+        adminRoles: [ROLES.admin],
+      }),
+    ],
   });
 }
 

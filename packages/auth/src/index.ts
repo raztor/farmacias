@@ -1,3 +1,4 @@
+export { accessControl, AUTH_ROLES } from "./access-control";
 export {
   AUTH_COOKIE_PREFIX,
   AUTH_SECRET_MIN_LENGTH,
