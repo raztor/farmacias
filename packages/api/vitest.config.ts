@@ -1,0 +1,17 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["src/**/*.test.ts"],
+    restoreMocks: true,
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/*.test.ts", "src/testing/**", "src/**/index.ts"],
+      reporter: ["text", "json-summary"],
+      thresholds: {
+        "src/modules/**/*.service.ts": { lines: 80 },
+      },
+    },
+  },
+});
