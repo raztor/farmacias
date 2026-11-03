@@ -15,5 +15,7 @@ export const adminRouter = createRouter({
 
   setRole: adminServiceProcedure
     .input(setRoleInput)
-    .mutation(({ ctx, input }) => ctx.adminService.setRole({ ...input, actorId: ctx.user.id })),
+    .mutation(({ ctx, input }) =>
+      ctx.adminService.setRole({ ...input, actorId: ctx.user.id, actorRole: ctx.role }),
+    ),
 });

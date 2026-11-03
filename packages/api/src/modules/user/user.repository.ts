@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@repo/db";
+import { toRole } from "@repo/shared";
 
 import { isRecordNotFoundError } from "../../lib/prisma-errors";
-import { toRole } from "../../lib/role";
 import type { UserProfile } from "./user.schema";
 
 export type UserRepository = {

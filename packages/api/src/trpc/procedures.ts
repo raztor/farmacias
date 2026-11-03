@@ -1,27 +1,32 @@
-import { TRPCError } from "@trpc/server";
-
-import { isAdminRole } from "../lib/role";
+import { requireIdentity, requireRole } from "./guards";
 import { baseProcedure } from "./init";
 import { errorMappingMiddleware, loggingMiddleware } from "./middlewares";
 
 /** Anonymous access. Every call is logged and its errors are normalized. */
 export const publicProcedure = baseProcedure.use(loggingMiddleware).use(errorMappingMiddleware);
 
-/** Requires a session. Adds non-null `session` and `user` to the context. */
-export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
-  if (!ctx.session) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Debes iniciar sesión para continuar." });
-  }
-  return next({ ctx: { session: ctx.session, user: ctx.session.user } });
+/**
+ * Requires a session (any role). Adds non-null `session`, `user` and the effective `role` to the
+ * context. Without a session: UNAUTHORIZED.
+ */
+export const protectedProcedure = publicProcedure.use(({ ctx, next }) =>
+  next({ ctx: requireIdentity(ctx.session) }),
+);
+
+/** Requires the `resident` role (resident app). Operators and admins: FORBIDDEN. */
+export const residentProcedure = protectedProcedure.use(({ ctx, next }) => {
+  requireRole(ctx.role, "resident");
+  return next();
 });
 
-/** Requires a session whose user has the `admin` role. */
+/** Requires `operator` or `admin` (back office). Residents: FORBIDDEN. */
+export const operatorProcedure = protectedProcedure.use(({ ctx, next }) => {
+  requireRole(ctx.role, "operational");
+  return next();
+});
+
+/** Requires `admin` (users, roles, audit). Residents and operators: FORBIDDEN. */
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (!isAdminRole(ctx.user.role)) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "No tienes permisos para realizar esta acción.",
-    });
-  }
+  requireRole(ctx.role, "admin");
   return next();
 });

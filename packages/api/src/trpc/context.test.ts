@@ -11,7 +11,7 @@ describe("createTRPCContext", () => {
   });
 
   it("resolves the session from the request headers and binds the request id", async () => {
-    const session = createTestSession({ id: "user-1", role: "user" });
+    const session = createTestSession({ id: "user-1", role: "resident" });
     const getSession = vi.fn(() => Promise.resolve(session));
     const { logger, entries } = createRecordingLogger();
     const deps = { ...createTestDeps({ logger }), auth: { api: { getSession } } };
@@ -22,7 +22,7 @@ describe("createTRPCContext", () => {
     expect(ctx.session).toBe(session);
     expect(ctx.requestId).toBe("req-1");
     expect(ctx.deps).toBe(deps);
-    expect(getSession).toHaveBeenCalledWith({ headers });
+    expect(getSession).toHaveBeenCalledWith({ headers, query: { disableCookieCache: true } });
     ctx.logger.info({ probe: true }, "probe");
     expect(entries).toContainEqual(
       expect.objectContaining({ obj: { requestId: "req-1", probe: true } }),

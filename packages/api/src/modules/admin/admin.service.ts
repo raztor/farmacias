@@ -1,4 +1,4 @@
-import { AppError, noopLogger, ROLES, type AppLogger } from "@repo/shared";
+import { AppError, noopLogger, ROLES, type AppLogger, type Role } from "@repo/shared";
 
 import type { ApiDependencies } from "../../trpc";
 import { createAdminRepository, type AdminRepository } from "./admin.repository";
@@ -23,6 +23,8 @@ export type AdminServiceDeps = {
 export type SetRoleCommand = SetRoleInput & {
   /** Id of the admin performing the change. */
   actorId: string;
+  /** Effective role of the actor (always `admin` behind `adminProcedure`), for the audit row. */
+  actorRole: Role;
 };
 
 export type AdminService = {
@@ -54,14 +56,14 @@ export const createAdminService = ({
     return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   },
 
-  setRole: async ({ actorId, userId, role }) => {
+  setRole: async ({ actorId, actorRole, userId, role }) => {
     if (actorId === userId && role !== ROLES.admin) {
       throw new AppError("FORBIDDEN", "No puedes quitarte tu propio rol de administrador.");
     }
-    const user = await repo.updateRole(userId, role);
-    if (!user) throw new AppError("NOT_FOUND", "El usuario no existe.");
-    logger.info({ actorId, userId, role }, "User role changed");
-    return user;
+    const result = await repo.updateRole({ actorId, actorRole, userId, role });
+    if (!result) throw new AppError("NOT_FOUND", "El usuario no existe.");
+    logger.info({ actorId, userId, role, previousRole: result.previousRole }, "User role changed");
+    return result.user;
   },
 });
 

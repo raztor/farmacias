@@ -10,7 +10,7 @@ const profile: UserProfile = {
   email: "ana@example.com",
   name: "Ana",
   image: null,
-  role: "user",
+  role: "resident",
   emailVerified: true,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
 };

@@ -10,7 +10,10 @@ import type { AppLogger } from "@repo/shared";
  */
 export type SessionResolver = {
   api: {
-    getSession: (input: { headers: Headers }) => Promise<AuthSession | null>;
+    getSession: (input: {
+      headers: Headers;
+      query?: { disableCookieCache?: boolean };
+    }) => Promise<AuthSession | null>;
   };
 };
 
@@ -44,6 +47,10 @@ export type TRPCContext = {
  * Builds the tRPC context: binds the request id to the logger and resolves the
  * Better Auth session from the request headers.
  *
+ * The signed cookie cache is bypassed (`disableCookieCache`): authorization always reads the
+ * session and the user's role from the database, so a role change or a revoked session applies
+ * to the very next API call instead of after the cache lifetime (5 minutes).
+ *
  * A failure to resolve the session (e.g. database down) is not treated as anonymous,
  * which would log users out: it surfaces as INTERNAL_SERVER_ERROR instead.
  */
@@ -54,7 +61,10 @@ export const createTRPCContext = async ({
 }: CreateTRPCContextOptions): Promise<TRPCContext> => {
   const logger = deps.logger.child({ requestId });
   try {
-    const session = await deps.auth.api.getSession({ headers });
+    const session = await deps.auth.api.getSession({
+      headers,
+      query: { disableCookieCache: true },
+    });
     return { deps, requestId, logger, session };
   } catch (error) {
     logger.error({ err: error }, "Failed to resolve the session");

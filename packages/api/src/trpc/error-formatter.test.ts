@@ -1,5 +1,5 @@
 import { TRPCError, type TRPCDefaultErrorShape } from "@trpc/server";
-import { updateProfileSchema } from "@repo/shared";
+import { AppError, updateProfileSchema } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 
 import { formatError } from "./error-formatter";
@@ -31,6 +31,34 @@ describe("formatError", () => {
 
     expect(formatted.message).toBe("Solicitud inválida");
     expect(formatted.data.zodError).toBeNull();
+  });
+
+  it("exposes the domain reason of a business error, and only the reason", () => {
+    const cause = new AppError("CONFLICT", "No hay stock suficiente.", {
+      details: { reason: "STOCK_CONFLICT", products: [{ productId: "p-1" }] },
+    });
+    const error = new TRPCError({ code: "CONFLICT", message: cause.message, cause });
+
+    const formatted = formatError({ shape: shapeFor(error), error });
+
+    expect(formatted.data.reason).toBe("STOCK_CONFLICT");
+    expect(formatted.data).not.toHaveProperty("details");
+  });
+
+  it("sets reason to null without an AppError reason and for internal errors", () => {
+    const plain = new TRPCError({ code: "CONFLICT", message: "Conflicto" });
+    const withoutReason = new TRPCError({
+      code: "NOT_FOUND",
+      cause: new AppError("NOT_FOUND", "No encontrado", { details: { id: "x" } }),
+    });
+    const internal = new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      cause: new AppError("INTERNAL", "boom", { details: { reason: "SECRET" } }),
+    });
+
+    for (const error of [plain, withoutReason, internal]) {
+      expect(formatError({ shape: shapeFor(error), error }).data.reason).toBeNull();
+    }
   });
 
   it("never exposes the message of internal errors", () => {

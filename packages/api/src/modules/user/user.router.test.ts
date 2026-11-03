@@ -5,14 +5,14 @@ import { createCaller } from "../../root";
 import { createRecordingLogger, createTestContext, createTestSession } from "../../testing/fakes";
 import { INTERNAL_ERROR_MESSAGE } from "../../trpc";
 
-const session = createTestSession({ id: "user-1", role: "user" });
+const session = createTestSession({ id: "user-1", role: "resident" });
 
 const row = {
   id: "user-1",
   email: "ana@example.com",
   name: "Ana",
   image: null,
-  role: "user",
+  role: "resident",
   emailVerified: true,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
 };
@@ -31,7 +31,7 @@ describe("user router", () => {
     const findUnique = vi.fn(() => Promise.resolve(row));
     const caller = createCaller(await createTestContext({ session, db: { user: { findUnique } } }));
 
-    await expect(caller.user.me()).resolves.toEqual({ ...row, role: "user" });
+    await expect(caller.user.me()).resolves.toEqual({ ...row, role: "resident" });
     expect(findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "user-1" } }));
   });
 

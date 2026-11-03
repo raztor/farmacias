@@ -1,8 +1,6 @@
 import type { PrismaClient } from "@repo/db";
-import type { Role } from "@repo/shared";
+import { toRole, type AuditAction, type Role } from "@repo/shared";
 
-import { isRecordNotFoundError } from "../../lib/prisma-errors";
-import { toRole } from "../../lib/role";
 import type { AdminUser } from "./admin.schema";
 
 export type ListUsersQuery = {
@@ -14,13 +12,32 @@ export type ListUsersQuery = {
   search?: string | undefined;
 };
 
+/** Role change requested by an administrator. */
+export type RoleChange = {
+  actorId: string;
+  actorRole: Role;
+  userId: string;
+  role: Role;
+};
+
+export type RoleChangeResult = {
+  user: AdminUser;
+  previousRole: Role;
+};
+
+/** Audit action written for every role change (docs/specs/accounts-roles.md R-ACC-08). */
+export const ROLE_CHANGE_AUDIT_ACTION = "user.role_change" satisfies AuditAction;
+
 export type AdminRepository = {
   countUsers: (filter?: { createdSince?: Date }) => Promise<number>;
   countActiveSessions: (now: Date) => Promise<number>;
   /** Newest users first (ties broken by id, so the order is stable for cursors). */
   listUsers: (query: ListUsersQuery) => Promise<AdminUser[]>;
-  /** Returns `null` when the user does not exist. */
-  updateRole: (userId: string, role: Role) => Promise<AdminUser | null>;
+  /**
+   * Changes the role and writes the `user.role_change` audit row in the same transaction.
+   * Returns `null` when the user does not exist (nothing is written).
+   */
+  updateRole: (change: RoleChange) => Promise<RoleChangeResult | null>;
 };
 
 const ADMIN_USER_SELECT = {
@@ -74,17 +91,26 @@ export const createAdminRepository = (db: PrismaClient): AdminRepository => ({
     return rows.map(toAdminUser);
   },
 
-  updateRole: async (userId, role) => {
-    try {
-      const row = await db.user.update({
+  updateRole: ({ actorId, actorRole, userId, role }) =>
+    db.$transaction(async (tx) => {
+      const current = await tx.user.findUnique({ where: { id: userId }, select: { role: true } });
+      if (current === null) return null;
+      const row = await tx.user.update({
         where: { id: userId },
         data: { role },
         select: ADMIN_USER_SELECT,
       });
-      return toAdminUser(row);
-    } catch (error) {
-      if (isRecordNotFoundError(error)) return null;
-      throw error;
-    }
-  },
+      await tx.auditLog.create({
+        data: {
+          actorId,
+          actorRole,
+          action: ROLE_CHANGE_AUDIT_ACTION,
+          entityType: "user",
+          entityId: userId,
+          before: { role: current.role },
+          after: { role },
+        },
+      });
+      return { user: toAdminUser(row), previousRole: toRole(current.role) };
+    }),
 });
