@@ -1,0 +1,2 @@
+# Lint and typecheck only the workspaces affected by changes relative to main (Turborepo --affected).
+pnpm exec turbo run lint typecheck --affected

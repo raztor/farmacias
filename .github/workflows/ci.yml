@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HUSKY: "0"
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  # Placeholder so `prisma generate` (prisma.config.ts) can load; no database is used in `quality`.
+  DATABASE_URL: postgresql://app:app@localhost:5432/app
+
+jobs:
+  quality:
+    name: Calidad (format, reglas, lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Full history: `turbo --affected` compares against the PR base commit.
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Turborepo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-quality-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-quality-
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Dependency policy
+        run: pnpm check:deps
+
+      - name: Naming conventions
+        run: pnpm check:naming
+
+      - name: Architecture rules
+        run: pnpm check:arch
+
+      - name: Lint, typecheck, test and build
+        run: pnpm turbo run lint typecheck test build ${{ github.event_name == 'pull_request' && '--affected' || '' }}
+        env:
+          # Pull requests only run tasks of workspaces affected since the base commit.
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
+          SKIP_ENV_VALIDATION: "true"
+
+  e2e:
+    name: E2E (Playwright, admin + web de la app)
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # admin: rewrites point to a local API (not started: the smoke specs do not call it).
+      API_INTERNAL_URL: http://localhost:4000
+      SKIP_ENV_VALIDATION: "true"
+      # Expo web export: empty API URL = same origin (production behaviour behind Caddy).
+      EXPO_PUBLIC_API_URL: ""
+      EXPO_NO_TELEMETRY: "1"
+      # Playwright starts `next start` (:3001) and the static server for the export (:8081).
+      E2E_START_SERVERS: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Turborepo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-e2e-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-e2e-
+
+      - name: Install Playwright (Chromium)
+        run: pnpm --filter @repo/e2e exec playwright install --with-deps chromium
+
+      - name: Build admin
+        run: pnpm turbo run build --filter=@repo/admin
+
+      - name: Export web de la app (apps/mobile/dist/web)
+        run: pnpm --filter @repo/mobile export:web
+
+      - name: Run E2E tests
+        run: pnpm turbo run test:e2e --filter=@repo/e2e
+
+      - name: Upload Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            apps/e2e/playwright-report
+            apps/e2e/test-results
+          retention-days: 7
+
+  docker:
+    name: Docker (${{ matrix.image }})
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: server
+            file: apps/server/Dockerfile
+          - image: worker
+            file: apps/worker/Dockerfile
+          - image: admin
+            file: apps/admin/Dockerfile
+          - image: mobile-web
+            file: apps/mobile/Dockerfile.web
+          - image: migrate
+            file: docker/migrate.Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          push: false
+          tags: farmacias-${{ matrix.image }}:ci
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  mobile:
+    name: Mobile (expo export android)
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EXPO_PUBLIC_API_URL: http://localhost:4000
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Export bundle (smoke test)
+        run: pnpm --filter @repo/mobile exec expo export --platform android --output-dir dist-export

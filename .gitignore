@@ -1,0 +1,54 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+build/
+.next/
+out/
+storybook-static/
+dist-export/
+*.tsbuildinfo
+
+# Expo / React Native
+.expo/
+.expo-shared/
+apps/mobile/ios/
+apps/mobile/android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Prisma (cliente generado)
+packages/db/src/generated/
+
+# Tests
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.maestro/output/
+
+# Herramientas
+.turbo/
+.eslintcache
+.cache/
+
+# Variables de entorno (solo se versionan los .env.example)
+.env
+.env.*
+!.env.example
+
+# SO / editores
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Sentry
+.sentryclirc
