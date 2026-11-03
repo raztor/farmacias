@@ -5,7 +5,6 @@ import { createQueueClient, type QueueClient } from "@repo/queue";
 
 import type { AppConfig } from "./app.types";
 import type { ServerEnv } from "./env.schema";
-import { createWelcomeEmailHook } from "./welcome-email";
 
 export type Infrastructure = {
   db: PrismaClient;
@@ -29,7 +28,6 @@ export const createInfrastructure = (env: ServerEnv, logger: Logger): Infrastruc
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: env.TRUSTED_ORIGINS,
     isProduction: env.NODE_ENV === "production",
-    onUserCreated: createWelcomeEmailHook(queue),
     logger,
   });
   return { db, queue, auth };

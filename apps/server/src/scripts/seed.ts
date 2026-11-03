@@ -1,17 +1,34 @@
 /**
- * `pnpm db:seed` — creates the first administrator from SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD.
+ * `pnpm db:seed` — loads the synthetic data of a demo environment (RNF-06). Idempotent: it can be
+ * re-run safely. One exported function per concern, run in order by `main`:
+ * - `seedAccounts` (`./seed-accounts`): preregistered accounts (residents, operator, admin).
+ * - `seedDemoCatalog` (`./seed-catalog`): ≥ 200 synthetic products with their stock.
+ * - `seedDemoOrders` (`./seed-demo-orders`): a few orders in several statuses, created through
+ *   the real ordering services (events, stock movements and audit stay consistent).
  *
- * Idempotent: an existing user is only promoted to `admin` (its password is never changed).
- * The account is created through Better Auth so the password hash and credential account match
- * what sign-in expects.
+ * Add further steps (catalog, inventory, orders…) as their own `seed-<concern>.ts` module and
+ * call them from `runSeed` after the accounts.
  */
 import { createAuth } from "@repo/auth";
 import { createPrismaClient, type PrismaClient } from "@repo/db";
 import { createLogger } from "@repo/observability";
-import { createEnv, emailSchema, nameSchema, passwordSchema, ROLES } from "@repo/shared";
+import { createEnv } from "@repo/shared";
 import type { z } from "zod";
 
 import { serverEnvSchema } from "../env.schema";
+import {
+  createAccountStore,
+  seedAccounts,
+  seedAccountsEnvShape,
+  toSeedPasswords,
+} from "./seed-accounts";
+import { seedDemoCatalog } from "./seed-catalog";
+import {
+  createDemoOrderServices,
+  createDemoOrderStore,
+  demoActorsFrom,
+  seedDemoOrders,
+} from "./seed-demo-orders";
 
 const seedEnvSchema = serverEnvSchema
   .pick({
@@ -21,47 +38,41 @@ const seedEnvSchema = serverEnvSchema
     BETTER_AUTH_URL: true,
     TRUSTED_ORIGINS: true,
   })
-  .extend({
-    SEED_ADMIN_EMAIL: emailSchema,
-    SEED_ADMIN_PASSWORD: passwordSchema,
-    SEED_ADMIN_NAME: nameSchema.default("Administrador"),
-  });
+  .extend(seedAccountsEnvShape);
 
 type SeedEnv = z.output<typeof seedEnvSchema>;
 
 const logger = createLogger({ service: "server-seed" });
 
-const ensureAdmin = async (db: PrismaClient, env: SeedEnv): Promise<void> => {
-  const email = env.SEED_ADMIN_EMAIL;
-  const existing = await db.user.findUnique({ where: { email }, select: { id: true, role: true } });
-
-  if (existing === null) {
-    const auth = createAuth({
-      db,
-      secret: env.BETTER_AUTH_SECRET,
-      baseURL: env.BETTER_AUTH_URL,
-      trustedOrigins: env.TRUSTED_ORIGINS,
-      isProduction: env.NODE_ENV === "production",
-      logger,
-    });
-    await auth.api.signUpEmail({
-      body: { email, password: env.SEED_ADMIN_PASSWORD, name: env.SEED_ADMIN_NAME },
-    });
-    logger.info({ email }, "Admin user created");
-  } else if (existing.role === ROLES.admin) {
-    logger.info({ email }, "Admin user already exists; nothing to do");
-    return;
-  }
-
-  await db.user.update({ where: { email }, data: { role: ROLES.admin, emailVerified: true } });
-  logger.info({ email }, "Admin role granted");
+const runSeed = async (db: PrismaClient, env: SeedEnv): Promise<void> => {
+  const auth = createAuth({
+    db,
+    secret: env.BETTER_AUTH_SECRET,
+    baseURL: env.BETTER_AUTH_URL,
+    trustedOrigins: env.TRUSTED_ORIGINS,
+    isProduction: env.NODE_ENV === "production",
+    logger,
+  });
+  const accounts = await seedAccounts({
+    store: createAccountStore({ db, auth }),
+    passwords: toSeedPasswords(env),
+    logger,
+  });
+  await seedDemoCatalog(db, logger);
+  await seedDemoOrders({
+    ...demoActorsFrom(accounts),
+    store: createDemoOrderStore(db),
+    services: createDemoOrderServices(db, logger),
+    logger,
+  });
 };
 
 const main = async (): Promise<void> => {
   const env = createEnv(seedEnvSchema, process.env);
   const db = createPrismaClient({ databaseUrl: env.DATABASE_URL, logger });
   try {
-    await ensureAdmin(db, env);
+    await runSeed(db, env);
+    logger.info("Seed completed");
   } finally {
     await db.$disconnect();
   }
