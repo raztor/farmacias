@@ -79,6 +79,10 @@ const fakeQueue: QueueClient = {
 export type FakeDb = {
   user?: Record<string, unknown>;
   session?: Record<string, unknown>;
+  auditLog?: Record<string, unknown>;
+  order?: Record<string, unknown>;
+  /** Interactive transactions: usually `(run) => run(fakeDb)`. */
+  $transaction?: unknown;
 };
 
 export type TestContextOptions = {
