@@ -1,6 +1,7 @@
-# La app abre en la pantalla de inicio de sesión (sin sesión guardada) y valida el formulario.
+# Smoke: la app abre en el catálogo público (sin sesión, HU-01 #3); desde «Mi cuenta» se llega a
+# «Iniciar sesión», que valida el formulario sin llamar al API.
 appId: cl.bnp.farmacias
-name: Pantalla de inicio de sesión
+name: Catálogo público e inicio de sesión
 tags:
   - smoke
 ---
@@ -9,9 +10,18 @@ tags:
     clearKeychain: true
 - extendedWaitUntil:
     visible:
-      id: "sign-in-submit"
+      id: "catalog-title"
     timeout: 20000
-- assertVisible: "Iniciar sesión"
+- assertVisible:
+    id: "catalog-search-input"
+- tapOn:
+    id: "nav-account"
+- tapOn:
+    id: "sign-in-prompt-button"
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-submit"
+    timeout: 10000
 - assertVisible:
     id: "sign-in-email"
 - assertVisible:

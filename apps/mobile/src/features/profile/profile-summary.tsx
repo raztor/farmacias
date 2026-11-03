@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@repo/api";
+import { ROLE_LABELS } from "@repo/shared";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Text } from "@repo/ui";
 import { Link } from "expo-router";
 import { View } from "react-native";
@@ -7,11 +8,6 @@ import { ErrorState, LoadingState } from "../../components/query-state";
 import { useMe } from "./use-profile";
 
 type Profile = RouterOutputs["user"]["me"];
-
-const ROLE_LABELS: Readonly<Record<Profile["role"], string>> = {
-  user: "Usuario",
-  admin: "Administrador",
-};
 
 function ProfileDetails({ profile }: Readonly<{ profile: Profile }>) {
   return (

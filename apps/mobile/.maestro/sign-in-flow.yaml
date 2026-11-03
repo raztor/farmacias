@@ -1,0 +1,58 @@
+# Inicio de sesión contra un API real (apps/server corriendo, accesible desde el dispositivo y con
+# `pnpm db:seed` aplicado). Primero credenciales inválidas (mensaje genérico, HU-02 criterio 2) y
+# luego una cuenta sintética de residente (HU-02 criterio 1). Variables: MAESTRO_EMAIL y
+# MAESTRO_PASSWORD (por defecto, residente1 con la contraseña de apps/server/.env.example).
+appId: cl.bnp.farmacias
+name: Inicio de sesión de residente
+env:
+  MAESTRO_EMAIL: ${MAESTRO_EMAIL || "residente1@demo.farmacia.cl"}
+  MAESTRO_PASSWORD: ${MAESTRO_PASSWORD || "Vecino-Demo-2026"}
+tags:
+  - e2e
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil:
+    visible:
+      id: "catalog-title"
+    timeout: 20000
+- tapOn:
+    id: "nav-account"
+- tapOn:
+    id: "sign-in-prompt-button"
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-submit"
+    timeout: 10000
+- assertNotVisible: "Regístrate"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: "contrasena-equivocada"
+- hideKeyboard
+- tapOn:
+    id: "sign-in-submit"
+- extendedWaitUntil:
+    visible: "Correo o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo."
+    timeout: 10000
+- tapOn:
+    id: "sign-in-password"
+- eraseText: 40
+- inputText: ${MAESTRO_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "sign-in-submit"
+# Vuelve a «Mi cuenta» (la pantalla que pidió la sesión) con el perfil del residente.
+- extendedWaitUntil:
+    visible:
+      id: "profile-name"
+    timeout: 20000
+- tapOn:
+    id: "sign-out"
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-prompt"
+    timeout: 10000

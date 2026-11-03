@@ -1,3 +1,9 @@
+import {
+  INVALID_CREDENTIALS_MESSAGE,
+  RESIDENT_APP_ONLY_MESSAGE,
+  isInvalidCredentials,
+} from "@repo/shared";
+
 import { GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE } from "../../lib/error-message";
 
 /** Shape of the `error` returned by Better Auth client calls. */
@@ -7,16 +13,12 @@ export type AuthClientError = {
   status: number;
 };
 
+/** Client-side code: valid credentials of an operator/admin account (not for this app). */
+export const RESIDENT_APP_ONLY_CODE = "RESIDENT_APP_ONLY";
+
 const AUTH_ERROR_MESSAGES: Readonly<Record<string, string>> = {
-  INVALID_EMAIL_OR_PASSWORD: "Correo o contraseña incorrectos.",
-  INVALID_EMAIL: "Ingresa un correo electrónico válido.",
-  INVALID_PASSWORD: "Correo o contraseña incorrectos.",
-  USER_ALREADY_EXISTS: "Ya existe una cuenta con este correo.",
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Ya existe una cuenta con este correo.",
-  PASSWORD_TOO_SHORT: "La contraseña es demasiado corta.",
-  PASSWORD_TOO_LONG: "La contraseña es demasiado larga.",
-  EMAIL_NOT_VERIFIED: "Debes verificar tu correo antes de ingresar.",
-  BANNED_USER: "Tu cuenta está suspendida. Contacta a soporte.",
+  [RESIDENT_APP_ONLY_CODE]: RESIDENT_APP_ONLY_MESSAGE,
+  BANNED_USER: "Tu cuenta está suspendida. Acércate a la Farmacia Comunitaria para revisarla.",
 };
 
 const TOO_MANY_REQUESTS = 429;
@@ -38,6 +40,8 @@ export class AuthRequestError extends Error {
 function messageForAuthError(error: AuthRequestError): string {
   const known = error.code === undefined ? undefined : AUTH_ERROR_MESSAGES[error.code];
   if (known !== undefined) return known;
+  // HU-02: one generic message, never which field (or whether the account) was wrong.
+  if (isInvalidCredentials(error)) return INVALID_CREDENTIALS_MESSAGE;
   if (error.status === TOO_MANY_REQUESTS) return TOO_MANY_REQUESTS_MESSAGE;
   if (error.status === 0) return NETWORK_ERROR_MESSAGE;
   return GENERIC_ERROR_MESSAGE;
