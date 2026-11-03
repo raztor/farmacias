@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "test:e2e": "playwright test",
+    "e2e:stack": "node src/scripts/e2e-stack.ts up",
+    "e2e:full": "node src/scripts/e2e-stack.ts test",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .turbo node_modules playwright-report test-results"
+    "clean": "rm -rf .turbo .cache node_modules playwright-report test-results"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",

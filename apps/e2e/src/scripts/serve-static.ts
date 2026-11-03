@@ -1,17 +1,24 @@
 /**
  * Tiny static server for the Expo web export (`expo export --platform web`), used by the
- * Playwright `mobile-web` project in CI and locally. It mirrors the production Caddyfile:
- * SPA fallback to `index.html` and no API (`/api/*` and `/trpc/*` answer 503 JSON, so the app
- * treats the session as missing and shows the sign-in screen).
+ * Playwright `mobile-web-*` projects (started by `e2e-stack.ts`). It mirrors the production
+ * Caddyfile (`apps/mobile/Caddyfile`): SPA fallback to `index.html`, and `/api/auth/*` +
+ * `/trpc/*` proxied to the API so the session cookie is first-party (the export is built with an
+ * empty `EXPO_PUBLIC_API_URL` = same origin). Without `E2E_API_UPSTREAM` those paths answer
+ * 503 JSON and the app shows the sign-in screen.
  *
  *   node src/scripts/serve-static.ts
  *
  * Env: `E2E_STATIC_DIR` (default `../mobile/dist/web`), `E2E_STATIC_PORT` (default 8081),
- * `E2E_STATIC_HOST` (default 127.0.0.1).
+ * `E2E_STATIC_HOST` (default 127.0.0.1), `E2E_API_UPSTREAM` (e.g. http://127.0.0.1:4000).
  */
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  request as httpRequest,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 
 const ROOT = resolve(
@@ -21,6 +28,10 @@ const ROOT = resolve(
 );
 const PORT = Number(process.env.E2E_STATIC_PORT ?? "8081");
 const HOST = process.env.E2E_STATIC_HOST ?? "127.0.0.1";
+const API_UPSTREAM =
+  process.env.E2E_API_UPSTREAM === undefined || process.env.E2E_API_UPSTREAM === ""
+    ? null
+    : new URL(process.env.E2E_API_UPSTREAM);
 
 const MIME_TYPES: Readonly<Record<string, string>> = {
   ".html": "text/html; charset=utf-8",
@@ -37,7 +48,7 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
   ".woff2": "font/woff2",
 };
 
-const API_PREFIXES = ["/api/", "/trpc/"];
+const API_PREFIXES = ["/api/auth/", "/trpc/"];
 
 /** Absolute path inside ROOT for a URL path, or null when it would escape ROOT. */
 function toFilePath(urlPath: string): string | null {
@@ -65,10 +76,49 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+/**
+ * Reverse proxy to the API, like Caddy's `reverse_proxy`: keeps the original Host and adds
+ * X-Forwarded-For/-Proto/-Host (the API trusts one proxy hop).
+ */
+function proxyToApi(upstream: URL, req: IncomingMessage, res: ServerResponse): void {
+  const forwardedFor = [req.headers["x-forwarded-for"], req.socket.remoteAddress]
+    .filter((value) => typeof value === "string" && value !== "")
+    .join(", ");
+  const proxied = httpRequest(
+    {
+      protocol: upstream.protocol,
+      hostname: upstream.hostname,
+      port: upstream.port,
+      method: req.method,
+      path: req.url,
+      headers: {
+        ...req.headers,
+        "x-forwarded-for": forwardedFor,
+        "x-forwarded-proto": "http",
+        "x-forwarded-host": req.headers.host ?? "",
+      },
+    },
+    (upstreamRes) => {
+      res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
+      upstreamRes.pipe(res);
+    },
+  );
+  proxied.on("error", (error) => {
+    process.stderr.write(`serve-static: proxy error ${String(error)}\n`);
+    if (!res.headersSent) sendJson(res, 502, { message: "API unreachable" });
+    else res.destroy();
+  });
+  req.pipe(proxied);
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   if (API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    sendJson(res, 503, { message: "API not available in the static E2E server" });
+    if (API_UPSTREAM === null) {
+      sendJson(res, 503, { message: "API not available in the static E2E server" });
+    } else {
+      proxyToApi(API_UPSTREAM, req, res);
+    }
     return;
   }
   const filePath = toFilePath(pathname);
