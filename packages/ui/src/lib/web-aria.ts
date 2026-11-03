@@ -9,6 +9,8 @@ export type WebAriaProps = Readonly<{
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
   "aria-required"?: boolean;
+  /** Marks the link of the current page in a navigation bar. */
+  "aria-current"?: "page" | false;
 }>;
 
 export function webAria(props: WebAriaProps): WebAriaProps {

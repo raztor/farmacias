@@ -9,6 +9,11 @@ export type ScreenProps = ComponentProps<typeof View> & {
   className?: string;
   /** Classes for the inner content container (padding and spacing). */
   contentClassName?: string;
+  /**
+   * Adds the bottom safe-area inset. Defaults to `true`; turn it off when a bottom bar (e.g. a
+   * navigation bar) below the screen already handles it.
+   */
+  bottomInset?: boolean;
 };
 
 const CONTENT_CLASSES = "gap-4 p-4";
@@ -23,6 +28,7 @@ export function Screen({
   scroll = false,
   className,
   contentClassName,
+  bottomInset = true,
   children,
   ...props
 }: ScreenProps) {
@@ -30,7 +36,8 @@ export function Screen({
     <View
       {...props}
       className={cn(
-        "flex-1 bg-background pb-safe pt-safe px-safe dark:bg-background-dark",
+        "flex-1 bg-background pt-safe px-safe dark:bg-background-dark",
+        bottomInset && "pb-safe",
         className,
       )}
     >

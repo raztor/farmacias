@@ -52,7 +52,7 @@ export const BUTTON_VARIANT_STYLES: Readonly<Record<ButtonVariant, VariantStyle>
 };
 
 export const BUTTON_SIZE_STYLES: Readonly<Record<ButtonSize, SizeStyle>> = {
-  sm: { container: "h-9 gap-1.5 rounded-md px-3", label: "text-sm" },
-  md: { container: "h-11 gap-2 rounded-md px-4", label: "text-base" },
-  lg: { container: "h-12 gap-2 rounded-lg px-6", label: "text-lg" },
+  sm: { container: "min-h-9 gap-1.5 rounded-md px-3 py-1.5", label: "text-sm" },
+  md: { container: "min-h-11 gap-2 rounded-md px-4 py-2", label: "text-base" },
+  lg: { container: "min-h-12 gap-2 rounded-lg px-6 py-2.5", label: "text-lg" },
 };

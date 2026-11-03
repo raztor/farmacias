@@ -22,7 +22,8 @@ export const colors = /** @satisfies {ColorTokens} */ ({
   card: { DEFAULT: "#ffffff", dark: "#18181b" },
   "card-foreground": { DEFAULT: "#09090b", dark: "#fafafa" },
   muted: { DEFAULT: "#f4f4f5", dark: "#27272a" },
-  "muted-foreground": { DEFAULT: "#71717a", dark: "#a1a1aa" },
+  // Light value darkened (T-09): #71717a reached only 4.4:1 on `muted` (WCAG 1.4.3 needs 4.5:1).
+  "muted-foreground": { DEFAULT: "#67676f", dark: "#a1a1aa" },
   primary: { DEFAULT: "#2563eb", dark: "#60a5fa" },
   "primary-foreground": { DEFAULT: "#ffffff", dark: "#172554" },
   secondary: { DEFAULT: "#f4f4f5", dark: "#27272a" },
@@ -36,7 +37,8 @@ export const colors = /** @satisfies {ColorTokens} */ ({
   warning: { DEFAULT: "#b45309", dark: "#fbbf24" },
   "warning-foreground": { DEFAULT: "#ffffff", dark: "#451a03" },
   border: { DEFAULT: "#e4e4e7", dark: "#27272a" },
-  input: { DEFAULT: "#d4d4d8", dark: "#3f3f46" },
+  // Form field borders need 3:1 against the surface (T-09, WCAG 1.4.11); zinc-300/700 had 1.5:1.
+  input: { DEFAULT: "#8a8a93", dark: "#71717a" },
   ring: { DEFAULT: "#2563eb", dark: "#60a5fa" },
 });
 
