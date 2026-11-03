@@ -16,6 +16,14 @@ export type CreatePrismaClientOptions = {
 const DEFAULT_LOG_LEVELS: readonly DbLogLevel[] = ["warn", "error"];
 
 /**
+ * Every session runs in UTC. `@prisma/adapter-pg` writes `Date` parameters as offset-less UTC
+ * strings and reads `timestamptz` values by replacing their offset with `+00:00`, so in any other
+ * session time zone (e.g. a Homebrew PostgreSQL in `America/Santiago`) Prisma-written instants
+ * and `now()`/`DEFAULT CURRENT_TIMESTAMP` values would disagree by the UTC offset.
+ */
+const POSTGRES_SESSION_OPTIONS = "-c timezone=UTC";
+
+/**
  * Creates a Prisma Client backed by the `pg` driver adapter.
  *
  * No connection is opened until the first query (or an explicit `$connect()`).
@@ -27,7 +35,7 @@ export function createPrismaClient(options: CreatePrismaClientOptions): PrismaCl
   const levels = options.log ?? DEFAULT_LOG_LEVELS;
 
   const adapter = new PrismaPg(
-    { connectionString },
+    { connectionString, options: POSTGRES_SESSION_OPTIONS },
     logger
       ? {
           onPoolError: (error) => {

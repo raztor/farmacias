@@ -15,6 +15,8 @@
     "db:reset": "prisma migrate reset",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test:integration": "tsx --test \"src/**/*.int.test.ts\"",
     "clean": "rm -rf .turbo node_modules dist coverage"
   },
   "dependencies": {
