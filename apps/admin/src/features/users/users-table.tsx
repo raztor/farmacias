@@ -7,10 +7,14 @@ type UsersTableProps = Readonly<{ users: readonly AdminUser[]; currentUserId: st
 
 const HEADER_CLASSES = "px-4 py-3 text-left text-sm font-medium text-muted-foreground";
 
-/** Responsive table: status and creation date are hidden on narrow screens. */
+/**
+ * Responsive table: status and creation date are hidden on narrow screens. The wrapper is
+ * `relative` so the absolutely positioned `sr-only` header stays inside its scroll box instead
+ * of widening the page (T-09: 12 px of horizontal scroll at 200 % zoom, WCAG 1.4.10).
+ */
 export function UsersTable({ users, currentUserId }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+    <div className="relative overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full border-collapse">
         <caption className="sr-only">Usuarios registrados</caption>
         <thead>

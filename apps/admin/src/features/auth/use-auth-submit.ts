@@ -16,7 +16,7 @@ export type AuthSubmitState = Readonly<{
   run: (request: () => Promise<AuthResult>) => Promise<void>;
 }>;
 
-/** Shared submit flow of the sign-in and sign-up forms. */
+/** Submit flow of the sign-in form. */
 export function useAuthSubmit(redirectTo: string): AuthSubmitState {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);

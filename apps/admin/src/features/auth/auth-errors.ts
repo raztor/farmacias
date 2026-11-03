@@ -1,3 +1,5 @@
+import { INVALID_CREDENTIALS_MESSAGE, isInvalidCredentials } from "@repo/shared";
+
 /** Shape of the `error` returned by Better Auth client calls. */
 export type AuthClientError = Readonly<{
   code?: string | undefined;
@@ -7,25 +9,25 @@ export type AuthClientError = Readonly<{
 
 const GENERIC_ERROR = "No pudimos completar la solicitud. Inténtalo de nuevo en unos minutos.";
 
+const TOO_MANY_REQUESTS = 429;
+
 const MESSAGES_BY_CODE: Readonly<Record<string, string>> = {
-  INVALID_EMAIL_OR_PASSWORD: "Correo o contraseña incorrectos.",
-  INVALID_EMAIL: "Ingresa un correo electrónico válido.",
-  INVALID_PASSWORD: "Correo o contraseña incorrectos.",
-  EMAIL_NOT_VERIFIED: "Debes verificar tu correo antes de iniciar sesión.",
-  USER_ALREADY_EXISTS: "Ya existe una cuenta con este correo.",
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Ya existe una cuenta con este correo.",
-  PASSWORD_TOO_SHORT: "La contraseña es demasiado corta.",
-  PASSWORD_TOO_LONG: "La contraseña es demasiado larga.",
-  BANNED_USER: "Tu cuenta está suspendida. Contacta a soporte.",
+  BANNED_USER: "Tu cuenta está suspendida. Contacta a un administrador del programa.",
 };
 
-/** User-facing (Spanish) message for a Better Auth error. Never exposes server details. */
+/**
+ * User-facing (Spanish) message for a Better Auth sign-in error. Invalid credentials always get
+ * the same generic message (HU-02): it never says whether the email or the password failed.
+ * Never exposes server details.
+ */
 export function getAuthErrorMessage(error: AuthClientError): string {
-  if (error.status === 429) {
+  if (error.status === TOO_MANY_REQUESTS) {
     return "Demasiados intentos. Espera un momento antes de volver a intentarlo.";
   }
   const byCode = error.code === undefined ? undefined : MESSAGES_BY_CODE[error.code];
-  return byCode ?? GENERIC_ERROR;
+  if (byCode !== undefined) return byCode;
+  if (isInvalidCredentials(error)) return INVALID_CREDENTIALS_MESSAGE;
+  return GENERIC_ERROR;
 }
 
 /** Message for network failures (API down, offline…). */

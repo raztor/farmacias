@@ -16,7 +16,7 @@ function user(id: string, overrides: Partial<AdminUser> = {}): AdminUser {
     email: `${id}@correo.cl`,
     name: `Usuario ${id}`,
     image: null,
-    role: ROLES.user,
+    role: ROLES.resident,
     emailVerified: true,
     banned: false,
     createdAt: new Date("2026-01-01T12:00:00Z"),
@@ -67,13 +67,13 @@ describe("withUserRole", () => {
 
     expect(findUserRole(next, "u1")).toBe(ROLES.admin);
     expect(findUserRole(next, "u2")).toBe(ROLES.admin);
-    expect(findUserRole(next, "u3")).toBe(ROLES.user);
+    expect(findUserRole(next, "u3")).toBe(ROLES.resident);
   });
 });
 
 describe("withUser", () => {
   it("replaces the cached row with the one returned by the API", () => {
-    const updated = user("u2", { role: ROLES.user, name: "Bea", banned: true });
+    const updated = user("u2", { role: ROLES.resident, name: "Bea", banned: true });
 
     expect(withUser(cache(), updated).pages[0]?.items[1]).toEqual(updated);
   });
@@ -82,7 +82,7 @@ describe("withUser", () => {
 describe("findUserRole", () => {
   it("finds users in any page", () => {
     expect(findUserRole(cache(), "u2")).toBe(ROLES.admin);
-    expect(findUserRole(cache(), "u3")).toBe(ROLES.user);
+    expect(findUserRole(cache(), "u3")).toBe(ROLES.resident);
   });
 
   it("returns null when the user or the cache is missing", () => {

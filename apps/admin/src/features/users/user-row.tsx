@@ -3,7 +3,7 @@
 import { Text } from "@repo/ui";
 
 import { RoleBadge } from "./role-badge";
-import { RoleToggle } from "./role-toggle";
+import { RoleSelect } from "./role-select";
 import type { AdminUser } from "./users-cache";
 import { formatUserDate } from "./users-format";
 
@@ -36,7 +36,7 @@ export function UserRow({ user, isCurrentUser }: UserRowProps) {
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-row justify-end">
-          <RoleToggle user={user} isCurrentUser={isCurrentUser} />
+          <RoleSelect user={user} isCurrentUser={isCurrentUser} />
         </div>
       </td>
     </tr>

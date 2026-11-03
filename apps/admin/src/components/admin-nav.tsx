@@ -1,35 +1,35 @@
 "use client";
 
+import type { Role } from "@repo/shared";
 import { cn } from "@repo/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Panel" },
-  { href: "/users", label: "Usuarios" },
-] as const;
+import { isNavItemActive, navItemsFor } from "../lib/nav-items";
 
-const isActive = (pathname: string, href: string): boolean =>
-  href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+type AdminNavProps = Readonly<{ role: Role }>;
 
-/** Primary navigation of the backoffice; marks the current section with `aria-current`. */
-export function AdminNav() {
+/**
+ * Primary navigation of the backoffice, filtered by role; marks the current section with
+ * `aria-current`.
+ */
+export function AdminNav({ role }: AdminNavProps) {
   const pathname = usePathname();
 
   return (
     <nav aria-label="Navegación principal">
       <ul className="flex flex-row gap-1">
-        {NAV_ITEMS.map((item) => {
-          const active = isActive(pathname, item.href);
+        {navItemsFor(role).map((item) => {
+          const active = isNavItemActive(item, pathname);
           return (
             <li key={item.href}>
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   active
-                    ? "bg-accent text-foreground"
+                    ? "bg-accent text-foreground underline underline-offset-4"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

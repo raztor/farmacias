@@ -1,9 +1,4 @@
-import { ROLES, type Role } from "@repo/shared";
-
-const ROLE_LABELS: Readonly<Record<Role, string>> = {
-  [ROLES.admin]: "Administrador",
-  [ROLES.user]: "Usuario",
-};
+import { ROLE_LABELS, type Role } from "@repo/shared";
 
 const dateFormatter = new Intl.DateTimeFormat("es-CL", { dateStyle: "medium" });
 
@@ -19,7 +14,5 @@ export function formatUserDate(date: Date): string {
 
 /** Toast shown after a successful role change. */
 export function roleChangeMessage(name: string, role: Role): string {
-  return role === ROLES.admin
-    ? `${name} ahora es administrador.`
-    : `${name} ya no es administrador.`;
+  return `El rol de ${name} ahora es «${ROLE_LABELS[role]}».`;
 }

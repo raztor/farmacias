@@ -5,8 +5,9 @@ import { formatUserDate, roleChangeMessage, roleLabel } from "./users-format";
 
 describe("roleLabel", () => {
   it("labels every role in Spanish", () => {
+    expect(roleLabel(ROLES.resident)).toBe("Persona inscrita");
+    expect(roleLabel(ROLES.operator)).toBe("Operario");
     expect(roleLabel(ROLES.admin)).toBe("Administrador");
-    expect(roleLabel(ROLES.user)).toBe("Usuario");
   });
 });
 
@@ -18,11 +19,11 @@ describe("formatUserDate", () => {
 });
 
 describe("roleChangeMessage", () => {
-  it("announces a promotion", () => {
-    expect(roleChangeMessage("Ana", ROLES.admin)).toBe("Ana ahora es administrador.");
-  });
-
-  it("announces a demotion", () => {
-    expect(roleChangeMessage("Ana", ROLES.user)).toBe("Ana ya no es administrador.");
+  it.each([
+    [ROLES.admin, "El rol de Ana ahora es «Administrador»."],
+    [ROLES.operator, "El rol de Ana ahora es «Operario»."],
+    [ROLES.resident, "El rol de Ana ahora es «Persona inscrita»."],
+  ])("announces the new role %s", (role, expected) => {
+    expect(roleChangeMessage("Ana", role)).toBe(expected);
   });
 });

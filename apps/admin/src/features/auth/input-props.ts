@@ -7,7 +7,7 @@ export const EMAIL_INPUT_PROPS = {
   inputMode: "email",
   autoCapitalize: "none",
   autoCorrect: false,
-  placeholder: "admin@correo.cl",
+  placeholder: "nombre@correo.cl",
 } as const satisfies Partial<InputProps>;
 
 /** Shared props of password fields. */

@@ -18,8 +18,8 @@ type SignInFormProps = Readonly<{
 }>;
 
 /**
- * Email + password sign-in for administrators, validated with the shared `signInSchema`.
- * The role is checked by the `(admin)` layout after the redirect, not here.
+ * Email + password sign-in for pharmacy staff (operators and admins), validated with the shared
+ * `signInSchema`. The role is checked by the `(admin)` layout after the redirect, not here.
  */
 export function SignInForm({ redirectTo }: SignInFormProps) {
   const { fieldProps, validate } = useForm(signInSchema, INITIAL_VALUES);
@@ -40,7 +40,9 @@ export function SignInForm({ redirectTo }: SignInFormProps) {
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle level={1}>Iniciar sesión</CardTitle>
-        <CardDescription>Acceso exclusivo para administradores.</CardDescription>
+        <CardDescription>
+          Acceso exclusivo para el personal autorizado de la farmacia.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form

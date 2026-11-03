@@ -1,15 +1,25 @@
+import { INVALID_CREDENTIALS_MESSAGE } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 
 import { getAuthErrorMessage } from "./auth-errors";
 
 describe("getAuthErrorMessage", () => {
-  it.each([
-    ["INVALID_EMAIL_OR_PASSWORD", "Correo o contraseña incorrectos."],
-    ["INVALID_PASSWORD", "Correo o contraseña incorrectos."],
-    ["EMAIL_NOT_VERIFIED", "Debes verificar tu correo antes de iniciar sesión."],
-    ["BANNED_USER", "Tu cuenta está suspendida. Contacta a soporte."],
-  ])("maps %s to a Spanish message", (code, expected) => {
-    expect(getAuthErrorMessage({ code, status: 401 })).toBe(expected);
+  it("shows one generic message for every invalid-credentials failure (HU-02 #2)", () => {
+    const failures = [
+      { code: "INVALID_EMAIL_OR_PASSWORD", status: 401 }, // unknown email or wrong password
+      { code: "INVALID_PASSWORD", status: 401 },
+      { code: "INVALID_EMAIL", status: 400 },
+      { code: "USER_NOT_FOUND", status: 404 },
+      { status: 401 },
+    ];
+
+    const messages = failures.map((failure) => getAuthErrorMessage(failure));
+
+    expect(new Set(messages)).toEqual(new Set([INVALID_CREDENTIALS_MESSAGE]));
+  });
+
+  it("explains a suspended account", () => {
+    expect(getAuthErrorMessage({ code: "BANNED_USER", status: 403 })).toMatch(/suspendida/);
   });
 
   it("explains rate limiting before looking at the code", () => {
