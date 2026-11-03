@@ -42,7 +42,7 @@ pnpm install          # instala dependencias y activa los hooks de git (husky)
 pnpm run setup        # crea los .env desde los .env.example y genera secretos
 pnpm dev:services     # levanta PostgreSQL, Redis y Mailpit con Docker
 pnpm db:migrate       # aplica las migraciones de Prisma
-pnpm db:seed          # crea el primer usuario admin (SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD)
+pnpm db:seed          # cuentas preinscritas, catálogo (200 productos) y pedidos de demo (SEED_*_PASSWORD)
 pnpm dev              # inicia todas las apps en modo desarrollo
 ```
 

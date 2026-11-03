@@ -29,7 +29,8 @@
 Hay **dos clientes**, sin interfaces duplicadas ([ADR 0002](./adr/0002-clientes-expo-universal-y-admin.md)):
 
 - **App para vecinos (`apps/mobile`)**: una sola base de código Expo para iOS, Android y web. Su exportación web (`expo export --platform web`) es el “MVP web responsive” y se sirve con Caddy (`apps/mobile/Dockerfile.web`).
-- **Backoffice (`apps/admin`)**: operación y administración de la farmacia, solo para el rol `admin`.
+  - Rutas (Expo Router, `apps/mobile/src/app`): `/` catálogo público (HU-01), `/product/[id]`, `/sign-in?redirect=<ruta>`, `/cart` (Mi pedido), `/checkout`, `/pay/[id]` (pago simulado), `/orders` (Mis pedidos), `/order/[id]` (detalle + línea de tiempo), `/account` y `/profile`. El catálogo no exige sesión; las pantallas que la necesitan muestran «Inicia sesión» (`RequireSignIn`) y, tras ingresar, vuelven a la ruta de origen (`redirect` validado contra redirecciones abiertas). Barra de navegación inferior: Catálogo · Mi pedido · Mis pedidos · Mi cuenta.
+- **Backoffice (`apps/admin`)**: operación y administración de la farmacia, para los roles `operator` y `admin` (Usuarios y Auditoría solo `admin`); un `resident` ve «Sin acceso».
 
 Cómo llega cada cliente a la API:
 
@@ -78,9 +79,10 @@ Los paquetes internos se consumen **como código fuente TypeScript** (no se comp
 - Helpers zod para env (schemas, no funciones): `zBooleanString` (p. ej. `zBooleanString.default(false)`), `zCommaList`. `createEnv` trata los valores vacíos (`VAR=`) como no definidos, así funcionan los opcionales y los defaults.
 - `AppError` (`code`: `"BAD_REQUEST" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "INTERNAL"`), `isAppError()`.
 - `type AppLogger` — interfaz mínima de logger (`debug/info/warn/error(obj, msg?)`, `child(bindings)`), que satisface pino. Permite que paquetes sin Node (api, queue) registren logs sin depender de pino.
-- Constantes: `APP_NAME` (`"Farmacia Comunitaria Peñalolén"`), `APP_SCHEME` (`"bnp"`), `AUTH_COOKIE_PREFIX` (`"bnp"`, prefijo de las cookies de Better Auth que comparten API, proxies de Next.js y cliente Expo), `ROLES` (`{ user: "user", admin: "admin" }`), `ROLE_VALUES`, `isRole()` y `type Role`.
+- Constantes: `APP_NAME` (`"Farmacia Comunitaria Peñalolén"`), `APP_SCHEME` (`"bnp"`), `AUTH_COOKIE_PREFIX` (`"bnp"`, prefijo de las cookies de Better Auth que comparten API, proxies de Next.js y cliente Expo), y, en `roles.ts`/`permissions.ts`, `ROLES` (`resident`, `operator`, `admin`), `ROLE_VALUES`, `DEFAULT_ROLE` (`resident`), `OPERATIONAL_ROLES`, `ROLE_LABELS`, `isRole()`/`toRole()`/`isResident()`/`isOperational()`/`isAdmin()`, `type Role` y la matriz `PERMISSION_STATEMENTS`/`ROLE_PERMISSIONS` con `can(role, resource, action)`. Mensajes de inicio de sesión compartidos: `INVALID_CREDENTIALS_MESSAGE` (genérico), `RESIDENT_APP_ONLY_MESSAGE`, `BACKOFFICE_ONLY_MESSAGE` e `isInvalidCredentials()`.
 - `noopLogger` (implementación vacía de `AppLogger`).
-- Schemas compartidos por formularios y API: `emailSchema`, `passwordSchema` (8–128), `nameSchema`, `signInSchema`, `signUpSchema`, `updateProfileSchema`, `paginationSchema` (`{ cursor?: string; limit: 1..100 = 20 }`).
+- Dominio (`src/domain`, mismas listas que los `CHECK` de la base): `ORDER_STATUSES` + `ORDER_STATUS_LABELS`, `FULFILLMENT_TYPES` + `FULFILLMENT_LABELS`, `PRODUCT_CATEGORIES` + `PRODUCT_CATEGORY_LABELS`, `STOCK_MOVEMENT_REASONS`, `PAYMENT_STATUSES`, `ACTOR_ROLES`, `AUDIT_ACTIONS` (con sus tipos y guardas `is*`), `ORDER_LINE_MIN_QUANTITY`/`ORDER_LINE_MAX_QUANTITY`, `DEFAULT_LOW_STOCK_THRESHOLD`, `normalizeSearchText(text)` y `buildProductSearchText(product)`.
+- Schemas compartidos por formularios y API: `emailSchema`, `passwordSchema` (8–128), `nameSchema`, `signInSchema`, `updateProfileSchema`, `paginationSchema` (`{ cursor?: string; limit: 1..100 = 20 }`).
 
 #### `@repo/db` — Prisma 7
 
@@ -89,10 +91,12 @@ Los paquetes internos se consumen **como código fuente TypeScript** (no se comp
 - Cliente generado en `src/generated/prisma` (ignorado por git) con el generador `prisma-client`.
 - Exporta: `createPrismaClient({ databaseUrl, log?, logger? })` (con `logger`, los logs de Prisma y los errores del pool de `pg` van al logger estructurado), `type PrismaClient`, `Prisma`, los tipos de modelos y `assertPostgresUrl` / `InvalidDatabaseUrlError`.
 - Solo para Node (server/worker): el cliente generado define `globalThis.__dirname` al importarse. admin y mobile solo usan sus **tipos** (a través de `@repo/api`).
+- Modelo del dominio ([spec de datos](./specs/data-model.md)): `Product`, `InventoryItem`, `StockMovement`, `Order`, `OrderLine`, `OrderStatusEvent`, `Payment`, `AuditLog`. Valores cerrados como texto con `CHECK` (sin enums), `pg_trgm` + índice GIN sobre `products.search_text`, únicos parciales (un borrador por persona, un pago aprobado por pedido) y código `P-000001` desde la secuencia `order_code_seq`.
+- Seed del catálogo: `seedCatalog(db, { buildSearchText })` (idempotente, upsert por `sku`, nunca reinicia stock) y `buildCatalogProducts()` (200 productos sintéticos). Pruebas con `node:test` (`tsx --test`); las de integración (`*.int.test.ts`) requieren `TEST_DATABASE_URL`.
 
 #### `@repo/auth` — Better Auth (servidor)
 
-- `createAuth({ db, secret, baseURL, trustedOrigins, isProduction, onUserCreated?, logger? })` → instancia de Better Auth con adapter Prisma, email+password, plugins `expo()` y `admin()`. Valida `secret` (32+ caracteres) y `baseURL` (http/https) y lanza `AuthConfigError`; siempre agrega `bnp://` a `trustedOrigins`. Los errores de `onUserCreated` se registran y nunca hacen fallar el registro.
+- `createAuth({ db, secret, baseURL, trustedOrigins, isProduction, onUserCreated?, logger? })` → instancia de Better Auth con adapter Prisma, email+password, plugins `expo()` y `admin()`. Valida `secret` (32+ caracteres) y `baseURL` (http/https) y lanza `AuthConfigError`; siempre agrega `bnp://` a `trustedOrigins`. El registro público está deshabilitado (`disableSignUp`): las cuentas son preinscritas (seed o `admin`); el hook opcional `onUserCreated` no se usa en el MVP y sus errores solo se registran.
 - Cookies con prefijo `bnp` (`advanced.cookiePrefix = AUTH_COOKIE_PREFIX`), caché de sesión en cookie de 5 minutos (`SESSION_POLICY`) y rate limiting en base de datos (`RateLimit`) en producción.
 - `type Auth`, `type AuthSession`, `type AuthUser` (sesión + usuario inferidos).
 
@@ -127,40 +131,58 @@ Los paquetes internos se consumen **como código fuente TypeScript** (no se comp
 
 Cada app valida sus variables en `src/env.ts`. `pnpm run setup` crea los `.env` desde los `.env.example` (con `run`: `pnpm setup` a secas es un comando propio de pnpm). El `.env` de la raíz configura los servicios de `docker-compose.yml` (`POSTGRES_*`, `REDIS_PORT`, `MAILPIT_*`); el stack de producción usa `docker/.env.example` (ver [DEPLOYMENT.md](./DEPLOYMENT.md)).
 
-| Variable                                                       | Usada por                | Ejemplo / default                                                                 |
-| -------------------------------------------------------------- | ------------------------ | --------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                     | todas                    | `development`                                                                     |
-| `LOG_LEVEL`                                                    | server, worker           | `info`                                                                            |
-| `DATABASE_URL`                                                 | db, server, worker       | `postgresql://app:app@localhost:5432/app`                                         |
-| `REDIS_URL`                                                    | server, worker           | `redis://localhost:6379`                                                          |
-| `PORT` / `HOST`                                                | server                   | `4000` / `0.0.0.0`                                                                |
-| `BETTER_AUTH_SECRET`                                           | server                   | 32+ caracteres aleatorios                                                         |
-| `BETTER_AUTH_URL`                                              | server                   | `http://localhost:4000`                                                           |
-| `TRUSTED_ORIGINS`                                              | server                   | `http://localhost:8081,http://localhost:3001,bnp://`                              |
-| `TRUST_PROXY_HOPS`                                             | server                   | `1` (proxies delante de la API; `0` si se expone directo)                         |
-| `RATE_LIMIT_MAX`                                               | server                   | `300` (requests por minuto e IP, por instancia)                                   |
-| `SENTRY_DSN`                                                   | server, worker           | (opcional)                                                                        |
-| `OTEL_EXPORTER_OTLP_ENDPOINT`                                  | server, worker           | (opcional) `http://localhost:4318`                                                |
-| `SMTP_URL` / `EMAIL_FROM`                                      | worker                   | `smtp://localhost:1025` / `App <no-reply@app.local>`                              |
-| `WORKER_CONCURRENCY`                                           | worker                   | `5`                                                                               |
-| `WORKER_HEALTH_PORT`                                           | worker                   | `4100`                                                                            |
-| `API_INTERNAL_URL`                                             | admin (servidor)         | `http://localhost:4000`                                                           |
-| `NEXT_PUBLIC_SENTRY_DSN`                                       | admin                    | (opcional)                                                                        |
-| `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT`          | admin, mobile (build)    | (opcional) subida de source maps                                                  |
-| `SKIP_ENV_VALIDATION`                                          | admin (build)            | `1` omite la validación en el build (Docker/CI)                                   |
-| `EXPO_PUBLIC_API_URL`                                          | mobile                   | `http://localhost:4000` (obligatoria en iOS/Android; vacía en web = mismo origen) |
-| `API_UPSTREAM`                                                 | mobile-web (Caddy)       | `http://server:4000` (destino del proxy `/trpc` y `/api/auth`)                    |
-| `EXPO_PUBLIC_SENTRY_DSN`                                       | mobile                   | (opcional)                                                                        |
-| `EAS_PROJECT_ID` / `APP_VARIANT`                               | mobile (`app.config.ts`) | `eas init` / perfil de `eas.json`                                                 |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | server (`pnpm db:seed`)  | crea el primer admin (`SEED_ADMIN_NAME` opcional, default `Administrador`)        |
+| Variable                                                                    | Usada por                | Ejemplo / default                                                                                                                                                                                          |
+| --------------------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                                  | todas                    | `development`                                                                                                                                                                                              |
+| `LOG_LEVEL`                                                                 | server, worker           | `info`                                                                                                                                                                                                     |
+| `DATABASE_URL`                                                              | db, server, worker       | `postgresql://app:app@localhost:5432/app`                                                                                                                                                                  |
+| `REDIS_URL`                                                                 | server, worker           | `redis://localhost:6379`                                                                                                                                                                                   |
+| `PORT` / `HOST`                                                             | server                   | `4000` / `0.0.0.0`                                                                                                                                                                                         |
+| `BETTER_AUTH_SECRET`                                                        | server                   | 32+ caracteres aleatorios                                                                                                                                                                                  |
+| `BETTER_AUTH_URL`                                                           | server                   | `http://localhost:4000`                                                                                                                                                                                    |
+| `TRUSTED_ORIGINS`                                                           | server                   | `http://localhost:8081,http://localhost:3001,bnp://`                                                                                                                                                       |
+| `TRUST_PROXY_HOPS`                                                          | server                   | `1` (proxies delante de la API; `0` si se expone directo)                                                                                                                                                  |
+| `RATE_LIMIT_MAX`                                                            | server                   | `300` (requests por minuto e IP, por instancia)                                                                                                                                                            |
+| `SENTRY_DSN`                                                                | server, worker           | (opcional)                                                                                                                                                                                                 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`                                               | server, worker           | (opcional) `http://localhost:4318`                                                                                                                                                                         |
+| `SMTP_URL` / `EMAIL_FROM`                                                   | worker                   | `smtp://localhost:1025` / `App <no-reply@app.local>`                                                                                                                                                       |
+| `WORKER_CONCURRENCY`                                                        | worker                   | `5`                                                                                                                                                                                                        |
+| `WORKER_HEALTH_PORT`                                                        | worker                   | `4100`                                                                                                                                                                                                     |
+| `API_INTERNAL_URL`                                                          | admin (servidor)         | `http://localhost:4000`                                                                                                                                                                                    |
+| `NEXT_PUBLIC_SENTRY_DSN`                                                    | admin                    | (opcional)                                                                                                                                                                                                 |
+| `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT`                       | admin, mobile (build)    | (opcional) subida de source maps                                                                                                                                                                           |
+| `SKIP_ENV_VALIDATION`                                                       | admin (build)            | `1` omite la validación en el build (Docker/CI)                                                                                                                                                            |
+| `EXPO_PUBLIC_API_URL`                                                       | mobile                   | `http://localhost:4000` (obligatoria en iOS/Android; vacía en web = mismo origen)                                                                                                                          |
+| `API_UPSTREAM`                                                              | mobile-web (Caddy)       | `http://server:4000` (destino del proxy `/trpc` y `/api/auth`)                                                                                                                                             |
+| `EXPO_PUBLIC_SENTRY_DSN`                                                    | mobile                   | (opcional)                                                                                                                                                                                                 |
+| `EAS_PROJECT_ID` / `APP_VARIANT`                                            | mobile (`app.config.ts`) | `eas init` / perfil de `eas.json`                                                                                                                                                                          |
+| `SEED_RESIDENT_PASSWORD` / `SEED_OPERATOR_PASSWORD` / `SEED_ADMIN_PASSWORD` | server (`pnpm db:seed`)  | contraseñas sintéticas (mín. 8) de las cuentas preinscritas: `residente1..3@demo.farmacia.cl`, `operador@demo.farmacia.cl`, `admin@demo.farmacia.cl` (valores de desarrollo en `apps/server/.env.example`) |
 
 `API_INTERNAL_URL` queda fija en los _rewrites_ al ejecutar `next build`: la imagen de admin se construye para una topología concreta (ver DEPLOYMENT.md). La web de la app, en cambio, lee `API_UPSTREAM` al iniciar Caddy.
 
 ## Flujos principales
 
-**Registro:** cliente → `POST /api/auth/sign-up/email` → Better Auth crea el usuario → hook `onUserCreated` → `queue.enqueue("email", { type: "welcome", … })` → worker envía el email por SMTP.
+**Cuentas:** no hay registro público (`POST /api/auth/sign-up/email` responde 400). `pnpm db:seed` crea las cuentas sintéticas preinscritas (`residente1..3`, `operador`, `admin` en `@demo.farmacia.cl`, contraseñas `SEED_*_PASSWORD`) y el `admin` puede cambiar roles (`admin.setRole`, auditado). El job `welcome` de la cola queda disponible pero el MVP no lo encola.
 
 **Llamada tRPC autenticada:** cliente → `/trpc/user.me` → `createTRPCContext` obtiene la sesión con `auth.api.getSession({ headers })` → `protectedProcedure` → `user.service` → `user.repository` (Prisma).
+
+## Dominio
+
+El contrato funcional del MVP (Inception v2.0: RF-01..RF-12, RNF-01..RNF-11, HU-01..HU-09) está bajado a una spec por módulo en [`docs/specs`](./specs/README.md), con el registro de decisiones que precisan el Inception (D-06 en adelante), y a la [matriz de trazabilidad](./traceability.md) problema → objetivo → requisito → historia → prueba → evidencia. Diagramas UML (ER, estados, secuencia de pago, componentes, despliegue) en Mermaid dentro de las specs y en PlantUML en [`docs/uml`](./uml/README.md).
+
+| Módulo (`packages/api/src/modules/…`) | Responsabilidad                                                                             | Spec                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `catalog`                             | Búsqueda pública por nombre comercial o principio activo, precio y disponibilidad           | [catalog](./specs/catalog.md)               |
+| `admin` + guardas de `trpc`           | Roles `resident` / `operator` / `admin`, cuentas preinscritas, cambio de rol                | [accounts-roles](./specs/accounts-roles.md) |
+| `orders`                              | Borrador único por persona, líneas, modalidad retiro/despacho simulado, confirmar, cancelar | [orders](./specs/orders.md)                 |
+| `order-status`                        | Máquina de estados pura: transiciones válidas por actor, etiquetas en español               | [order-status](./specs/order-status.md)     |
+| `payments`                            | Pago simulado idempotente detrás del puerto `PaymentGateway`                                | [payments](./specs/payments.md)             |
+| `inventory`                           | Descuento atómico al aprobarse el pago, restauración por cancelación, movimientos de stock  | [inventory](./specs/inventory.md)           |
+| `operations`                          | Bandeja operativa (filtros, FIFO) y transiciones físicas con concurrencia optimista         | [operations](./specs/operations.md)         |
+| `tracking`                            | “Mis pedidos” y línea de tiempo del pedido propio                                           | [tracking](./specs/tracking.md)             |
+| `audit`                               | Registro de cambios críticos en la misma transacción; consulta solo `admin`                 | [audit](./specs/audit.md)                   |
+
+**Pago simulado (flujo crítico):** app → `payments.pay({ orderId, idempotencyKey, scenario })` → una transacción: registra el intento (clave única) → `PaymentGateway.charge` → si aprueba, descuento condicional por línea (`on_hand >= q`, en orden de `productId`) → _compare-and-set_ del pedido a `payment_validated` → evento de estado + movimientos + auditoría. Ver la [secuencia completa](./specs/payments.md#4-estados-y-transiciones).
 
 ## Producción
 

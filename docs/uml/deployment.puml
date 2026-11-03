@@ -1,0 +1,39 @@
+@startuml deployment
+' Despliegue del entorno de demostración (docker-compose.prod.yml, docs/DEPLOYMENT.md).
+' Motor de contenedores: Podman o Docker. Solo datos sintéticos (RNF-06).
+title Despliegue — entorno de demostración
+
+actor "Persona inscrita" as resident
+actor "Operario / administrador" as staff
+
+node "Navegador (Chrome, Edge, Firefox)\nescritorio y móvil" as browser
+node "iOS / Android (EAS, opcional — D-21)" as device
+
+node "Host de demostración (compose)" {
+  node "mobile-web\nCaddy :8080" as mobileweb {
+    artifact "export web de Expo" as webexport
+  }
+  node "admin\nNext.js :3001" as admin
+  node "server\nFastify :4000\n/trpc · /api/auth · /health · /ready" as server
+  node "worker\nBullMQ :4100 /health" as worker
+  node "migrate (job)\nprisma migrate deploy" as migrate
+  database "postgres :5432\nvolumen postgres-data" as pg
+  database "redis :6379\nvolumen redis-data" as redis
+  node "mailpit (perfil demo)" as mailpit
+}
+
+resident --> browser
+resident --> device
+staff --> browser
+browser --> mobileweb : HTTPS
+browser --> admin : HTTPS
+device --> server : HTTPS (EXPO_PUBLIC_API_URL)
+mobileweb --> server : proxy /trpc y /api/auth (API_UPSTREAM)
+admin --> server : rewrites (API_INTERNAL_URL)
+server --> pg
+server --> redis : encola
+worker --> redis : consume
+worker --> pg
+worker --> mailpit : SMTP
+migrate --> pg : antes de server/worker
+@enduml

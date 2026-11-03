@@ -145,9 +145,38 @@ Se aplica con `pnpm check:deps` ([`tooling/scripts/src/policy.ts`](../tooling/sc
 
 - **Unitarios:** Vitest, colocados junto al código (`*.test.ts`). Todo `*.service.ts` tiene tests.
 - **API:** tests con `createCaller` y repositorios falsos (sin base de datos).
-- **E2E web:** Playwright en el workspace `apps/e2e` (`@repo/e2e`), con dos proyectos: `admin` (backoffice, `http://localhost:3001`) y `mobile-web` (export web de la app Expo, `http://localhost:8081`). Specs en `apps/e2e/src/<proyecto>/*.spec.ts`; ver la cabecera de `apps/e2e/playwright.config.ts` para las variables (`E2E_ADMIN_URL`, `E2E_MOBILE_WEB_URL`, `E2E_START_SERVERS`).
+- **Pirámide:** muchos unitarios (rápidos, sin base de datos), menos de integración sobre PostgreSQL real y muy pocos E2E. `pnpm test` nunca necesita base de datos.
+- 🔒 **Cobertura:** `pnpm --filter @repo/api test:coverage` (v8) exige ≥ 80 % de líneas en cada `src/modules/**/*.service.ts`; CI la ejecuta en el job `integration` y publica el resumen.
+- 🔒 CI ejecuta lint, typecheck, tests y build en cada PR, más las pruebas de integración (§8.1) y los E2E (§8.2).
+
+### 8.1 Pruebas de integración (PostgreSQL real)
+
+Para repositorios, transacciones, concurrencia y restricciones de la base (CHECK, UNIQUE): lo que un repositorio falso no puede probar.
+
+- **Archivos:** `*.int.test.ts` junto al código de `packages/api/src`. Corren con `vitest.integration.config.ts` (`pnpm test:integration`), **en serie** (sin paralelismo de archivos), y la config unitaria los excluye.
+- **Base de datos aislada por ejecución:** el `globalSetup` (`packages/api/src/testing/integration/global-setup.ts`) crea en el servidor de `TEST_DATABASE_URL` una base nueva con nombre único (`farmacias_api_it_<tiempo>_<azar>`), le aplica las **migraciones reales** de `@repo/db` con `prisma migrate deploy` (lo mismo que corre la imagen `migrate` en producción) y la elimina al terminar (`DROP DATABASE ... WITH (FORCE)`). Nunca toca la base de `TEST_DATABASE_URL` ni otras bases: solo crea/elimina nombres con ese prefijo.
+- **Helpers** (`packages/api/src/testing/integration`, importar desde su `index.ts`):
+  - `INTEGRATION_ENABLED` para `describe.skipIf(!INTEGRATION_ENABLED)(...)`;
+  - `getTestDb()` (PrismaClient del archivo) y `disconnectTestDb()` en `afterAll`;
+  - `resetDatabase()` en `beforeEach`: `TRUNCATE ... RESTART IDENTITY CASCADE` de todas las tablas (salvo `_prisma_migrations`) y reinicio de secuencias (`order_code_seq` vuelve a `P-000001`);
+  - factories con datos sintéticos válidos: `createUser({ role })`, `createProduct({ onHand, priceClp, ... })` (con su fila de inventario), `setStock`, `createOrder(residentId, { status, fulfillment, lines })`, `createPayment(order, { status, idempotencyKey })`.
+- **Sin `TEST_DATABASE_URL`** las suites se omiten con un mensaje claro; **en CI (`CI=true`) su ausencia es un error**, para que el job nunca quede verde sin probar nada.
+- **Ejemplo mínimo:** ver `packages/api/src/testing/integration/harness.int.test.ts` (smoke del arnés: migraciones aplicadas, `CHECK on_hand >= 0`, `idempotency_key` única).
+
+Ejecutarlas localmente con el PostgreSQL de compose (el usuario `app` tiene permiso para crear bases):
+
+```bash
+pnpm dev:services                       # postgres:18-alpine en 127.0.0.1:5432
+TEST_DATABASE_URL=postgresql://app:app@localhost:5432/app pnpm test:integration
+# Solo @repo/api: pnpm --filter @repo/api test:integration
+```
+
+CI: el job `integration` de `.github/workflows/ci.yml` levanta un servicio `postgres:18-alpine`, define `TEST_DATABASE_URL` y ejecuta `pnpm test:integration` (tarea Turborepo sin caché que solo recibe `TEST_DATABASE_URL` y `CI`). La tarea corre en `@repo/api` (Vitest, `*.int.test.ts`) y en `@repo/db` (`node:test`, restricciones del esquema, seed del catálogo y zona horaria de la sesión).
+
+### 8.2 E2E
+
+- **E2E web:** Playwright en el workspace `apps/e2e` (`@repo/e2e`) contra el stack completo (API, worker, admin, export web de Expo, PostgreSQL y Redis). `pnpm --filter @repo/e2e e2e:full` levanta el stack, corre la suite y lo detiene. Proyectos `admin-*` y `mobile-web-*` por navegador (Chromium, Firefox, WebKit, viewports Pixel 7 e iPhone 15; Chrome y Edge con `E2E_BRANDED_BROWSERS=1`) y `a11y-*` (axe, teclado, zoom 200 %). Specs en `apps/e2e/src/{admin,mobile-web,a11y}/**/*.spec.ts`; variables y ejecución registrada en [docs/validation/e2e.md](./validation/e2e.md).
 - **E2E mobile nativo:** Maestro (`apps/mobile/.maestro`).
-- 🔒 CI ejecuta lint, typecheck, tests y build en cada PR.
 
 ## 9. Git y Pull Requests
 

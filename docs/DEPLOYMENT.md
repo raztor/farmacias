@@ -144,17 +144,19 @@ docker-compose --env-file docker/.env -f docker-compose.prod.yml --profile demo 
 - Postgres y Redis no publican puertos. Server (4000), admin (3001) y mobile-web (8080) sí. El `/health` del worker (4100, `WORKER_PORT`) y la bandeja de Mailpit (8025) se publican solo en `127.0.0.1`. Pon delante un proxy inverso con TLS (Caddy, Traefik, Nginx) y ajusta `TRUST_PROXY_HOPS`.
 - Redis corre con AOF (`--appendonly yes`) y `--maxmemory-policy noeviction`, obligatorio para BullMQ.
 - Defaults moderados: límites de memoria por servicio, logs `json-file` rotados (10 MB × 3), `restart: unless-stopped`, `init: true`, `no-new-privileges`, `cap_drop: ALL` y sistema de archivos de solo lectura en server, worker y mobile-web (`/tmp` en tmpfs).
-- Crear el primer administrador:
+- Cargar los datos sintéticos de demo (cuentas preinscritas, catálogo y pedidos; idempotente):
 
   ```bash
   docker compose --env-file docker/.env -f docker-compose.prod.yml run --rm \
-    -e SEED_ADMIN_EMAIL=admin@example.com -e SEED_ADMIN_PASSWORD='una-clave-larga' \
-    server node dist/scripts/seed.js
+    -e SEED_RESIDENT_PASSWORD='otra-clave-larga-1' -e SEED_OPERATOR_PASSWORD='otra-clave-larga-2' \
+    -e SEED_ADMIN_PASSWORD='otra-clave-larga-3' server node dist/scripts/seed.js
   ```
+
+- **Zona horaria de PostgreSQL:** las sesiones de Prisma fuerzan `timezone=UTC` (`createPrismaClient` en `@repo/db`), porque el adapter `pg` de Prisma escribe y lee `timestamptz` asumiendo UTC. No hace falta configurar la base, pero cualquier cliente SQL propio debe usar UTC para comparar con `now()`.
 
 ### Verificación (smoke test)
 
-Se ejecutó el 3 de noviembre de 2026 con Podman 6.1, las cinco imágenes `:dev`, secretos sintéticos y el perfil `demo`. Las cookies de sesión llevan el prefijo `__Secure-bnp.` y el atributo `Secure`, porque `NODE_ENV=production`; con curl se reenvían a mano en el header `cookie:`.
+Registro histórico de la plantilla, previo al modelo de dominio del Sprint 1 (hoy no hay registro público, ni email de bienvenida, ni `SEED_ADMIN_*`). Se ejecutó el 3 de noviembre de 2026 con Podman 6.1, las cinco imágenes `:dev`, secretos sintéticos y el perfil `demo`. Las cookies de sesión llevan el prefijo `__Secure-bnp.` y el atributo `Secure`, porque `NODE_ENV=production`; con curl se reenvían a mano en el header `cookie:`.
 
 | Verificación                   | Comando (resumen)                                                              | Resultado                                                    |
 | ------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -222,7 +224,7 @@ eas update --channel production --message "fix: ..."   # actualización OTA (sol
 ```bash
 pnpm dev:services        # docker compose up -d
 pnpm db:deploy           # aplica las migraciones
-pnpm db:seed             # primer admin (SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD de apps/server/.env)
+pnpm db:seed             # cuentas preinscritas, catálogo y pedidos de demo (SEED_*_PASSWORD de apps/server/.env)
 pnpm dev:services:down   # docker compose down (agrega -v para borrar los datos)
 ```
 

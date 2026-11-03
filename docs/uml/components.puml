@@ -1,0 +1,81 @@
+@startuml components
+' Diagrama de componentes (docs/ARCHITECTURE.md, docs/specs/README.md).
+title Componentes — MVP Farmacia Comunitaria Peñalolén
+
+package "Clientes" {
+  [apps/mobile\nExpo universal (vecinos)\nweb · iOS · Android] as mobile
+  [apps/admin\nNext.js (operación y administración)] as admin
+}
+
+package "apps/server (Fastify)" {
+  [Better Auth\n/api/auth/*] as auth
+  [tRPC\n/trpc] as trpc
+}
+
+package "@repo/api — módulos de negocio" {
+  [catalog] as catalog
+  [orders] as orders
+  [order-status\n(máquina de estados pura)] as ost
+  [payments] as payments
+  [inventory] as inventory
+  [operations] as operations
+  [tracking] as tracking
+  [audit] as audit
+  [admin\n(usuarios y roles)] as adminmod
+  interface "PaymentGateway" as port
+  [SimulatedPaymentGateway] as sim
+}
+
+package "Infraestructura" {
+  [@repo/db (Prisma 7)] as db
+  database "PostgreSQL" as pg
+  [apps/worker (BullMQ)] as worker
+  queue "Redis" as redis
+}
+
+mobile --> auth : HTTPS (cookie de sesión)
+mobile --> trpc : HTTPS
+admin --> auth : rewrites mismo origen
+admin --> trpc : rewrites mismo origen
+
+trpc --> catalog
+trpc --> orders
+trpc --> payments
+trpc --> operations
+trpc --> tracking
+trpc --> audit
+trpc --> adminmod
+
+orders --> ost
+operations --> ost
+tracking --> ost
+payments --> ost
+payments --> port
+sim ..|> port
+payments --> inventory
+orders --> inventory
+operations --> inventory
+catalog --> inventory
+payments --> audit
+operations --> audit
+inventory --> audit
+adminmod --> audit
+
+catalog --> db
+orders --> db
+payments --> db
+inventory --> db
+operations --> db
+tracking --> db
+audit --> db
+adminmod --> db
+auth --> db
+db --> pg
+worker --> redis
+
+note bottom of port
+  RNF-11: la lógica de negocio depende del puerto,
+  no del simulador. Una pasarela real sería otro
+  adaptador (fuera de alcance, §4.4).
+end note
+@enduml
