@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ROLE_VALUES } from "../constants";
+import { ROLE_VALUES } from "../roles";
 
 export const EMAIL_MAX_LENGTH = 254;
 export const PASSWORD_MIN_LENGTH = 8;

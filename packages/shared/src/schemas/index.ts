@@ -1,4 +1,4 @@
-export { signInSchema, signUpSchema, type SignInInput, type SignUpInput } from "./auth.schema";
+export { signInSchema, type SignInInput } from "./auth.schema";
 export {
   PAGINATION_DEFAULT_LIMIT,
   PAGINATION_MAX_LIMIT,

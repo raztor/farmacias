@@ -10,18 +10,3 @@ export const APP_SCHEME = "bnp";
  * session cookie and the Expo client that stores it.
  */
 export const AUTH_COOKIE_PREFIX = APP_SCHEME;
-
-/** User roles. `admin` unlocks the backoffice and `adminProcedure` endpoints. */
-export const ROLES = {
-  user: "user",
-  admin: "admin",
-} as const;
-
-export type Role = (typeof ROLES)[keyof typeof ROLES];
-
-/** Every role as a tuple, handy for `z.enum(ROLE_VALUES)` and exhaustive iteration. */
-export const ROLE_VALUES = [ROLES.user, ROLES.admin] as const satisfies readonly Role[];
-
-/** Type guard for values coming from untyped sources (database rows, session payloads). */
-export const isRole = (value: unknown): value is Role =>
-  typeof value === "string" && (ROLE_VALUES as readonly string[]).includes(value);

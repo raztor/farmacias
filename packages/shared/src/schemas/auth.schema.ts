@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PASSWORD_MAX_LENGTH, emailSchema, nameSchema, passwordSchema } from "./user.schema";
+import { PASSWORD_MAX_LENGTH, emailSchema } from "./user.schema";
 
 /**
  * Sign-in only checks presence: the password policy may change over time and
@@ -14,11 +14,4 @@ export const signInSchema = z.object({
     .max(PASSWORD_MAX_LENGTH, { error: "Contraseña inválida" }),
 });
 
-export const signUpSchema = z.object({
-  name: nameSchema,
-  email: emailSchema,
-  password: passwordSchema,
-});
-
 export type SignInInput = z.infer<typeof signInSchema>;
-export type SignUpInput = z.infer<typeof signUpSchema>;

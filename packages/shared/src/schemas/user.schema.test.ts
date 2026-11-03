@@ -56,7 +56,10 @@ describe("nameSchema", () => {
 
 describe("roleSchema", () => {
   it("accepts known roles only", () => {
+    expect(roleSchema.parse("resident")).toBe("resident");
+    expect(roleSchema.parse("operator")).toBe("operator");
     expect(roleSchema.parse("admin")).toBe("admin");
+    expect(roleSchema.safeParse("user").success).toBe(false);
     expect(roleSchema.safeParse("root").success).toBe(false);
   });
 });

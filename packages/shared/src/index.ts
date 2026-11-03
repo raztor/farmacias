@@ -1,12 +1,43 @@
 export {
-  APP_NAME,
-  APP_SCHEME,
-  AUTH_COOKIE_PREFIX,
-  ROLES,
-  ROLE_VALUES,
-  isRole,
-  type Role,
-} from "./constants";
+  BACKOFFICE_ONLY_MESSAGE,
+  INVALID_CREDENTIALS_MESSAGE,
+  RESIDENT_APP_ONLY_MESSAGE,
+  isInvalidCredentials,
+  type SignInFailure,
+} from "./auth-messages";
+export { APP_NAME, APP_SCHEME, AUTH_COOKIE_PREFIX } from "./constants";
+export {
+  ACTOR_ROLES,
+  AUDIT_ACTIONS,
+  DEFAULT_LOW_STOCK_THRESHOLD,
+  FULFILLMENT_LABELS,
+  FULFILLMENT_TYPES,
+  ORDER_LINE_MAX_QUANTITY,
+  ORDER_LINE_MIN_QUANTITY,
+  ORDER_STATUS_LABELS,
+  ORDER_STATUSES,
+  PAYMENT_STATUSES,
+  PRODUCT_CATEGORIES,
+  PRODUCT_CATEGORY_LABELS,
+  STOCK_MOVEMENT_REASONS,
+  buildProductSearchText,
+  isActorRole,
+  isAuditAction,
+  isFulfillmentType,
+  isOrderStatus,
+  isPaymentStatus,
+  isProductCategory,
+  isStockMovementReason,
+  normalizeSearchText,
+  type ActorRole,
+  type AuditAction,
+  type FulfillmentType,
+  type OrderStatus,
+  type PaymentStatus,
+  type ProductCategory,
+  type SearchableProduct,
+  type StockMovementReason,
+} from "./domain";
 export { createEnv, formatEnvIssues, zBooleanString, zCommaList, type EnvSource } from "./env";
 export {
   APP_ERROR_CODES,
@@ -16,6 +47,28 @@ export {
   type AppErrorOptions,
 } from "./errors";
 export { noopLogger, type AppLogger, type LogFn } from "./logger";
+export {
+  PERMISSION_STATEMENTS,
+  ROLE_PERMISSIONS,
+  can,
+  type Action,
+  type PermissionStatements,
+  type Resource,
+  type RolePermissions,
+} from "./permissions";
+export {
+  DEFAULT_ROLE,
+  OPERATIONAL_ROLES,
+  ROLE_LABELS,
+  ROLE_VALUES,
+  ROLES,
+  isAdmin,
+  isOperational,
+  isResident,
+  isRole,
+  toRole,
+  type Role,
+} from "./roles";
 export {
   EMAIL_MAX_LENGTH,
   NAME_MAX_LENGTH,
@@ -29,11 +82,9 @@ export {
   passwordSchema,
   roleSchema,
   signInSchema,
-  signUpSchema,
   updateProfileSchema,
   type Pagination,
   type PaginationInput,
   type SignInInput,
-  type SignUpInput,
   type UpdateProfileInput,
 } from "./schemas";
