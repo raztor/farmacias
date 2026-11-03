@@ -1,0 +1,75 @@
+# syntax=docker/dockerfile:1
+#
+# Production image of the Expo app's web build (@repo/mobile, `expo export --platform web`),
+# served by Caddy (apps/mobile/Caddyfile). Build from the repository root:
+#
+#   docker build -f apps/mobile/Dockerfile.web -t farmacias-mobile-web .
+#
+# EXPO_PUBLIC_API_URL is intentionally empty: the browser calls its own origin (/api/auth/*,
+# /trpc/*) and Caddy proxies those paths to API_UPSTREAM (runtime env, default
+# http://server:4000), so the session cookie is first-party and no CORS is involved.
+
+ARG NODE_IMAGE=node:26.13-alpine
+ARG CADDY_IMAGE=caddy:2-alpine
+ARG PNPM_VERSION=12.16.1
+ARG TURBO_VERSION=2.11.10
+
+# ---------------------------------------------------------------------------------------------
+# base: Node + pnpm (Node 26 images no longer ship Corepack, so pnpm is installed with npm).
+# ---------------------------------------------------------------------------------------------
+FROM ${NODE_IMAGE} AS base
+ARG PNPM_VERSION
+ENV PNPM_STORE_DIR=/pnpm/store \
+    TURBO_TELEMETRY_DISABLED=1 \
+    EXPO_NO_TELEMETRY=1 \
+    DO_NOT_TRACK=1 \
+    HUSKY=0 \
+    CI=1
+RUN npm install --global "pnpm@${PNPM_VERSION}" && npm cache clean --force
+WORKDIR /app
+
+# ---------------------------------------------------------------------------------------------
+# pruner: keeps only @repo/mobile and the workspaces it depends on.
+# ---------------------------------------------------------------------------------------------
+FROM base AS pruner
+ARG TURBO_VERSION
+RUN npm install --global "turbo@${TURBO_VERSION}" && npm cache clean --force
+COPY . .
+RUN turbo prune @repo/mobile --docker
+
+# ---------------------------------------------------------------------------------------------
+# installer: install + static web export (apps/mobile/dist/web).
+# ---------------------------------------------------------------------------------------------
+FROM base AS installer
+COPY --from=pruner /app/out/json/ ./
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --store-dir "${PNPM_STORE_DIR}"
+COPY --from=pruner /app/out/full/ ./
+
+ARG EXPO_PUBLIC_SENTRY_DSN=
+# Empty on purpose: same-origin API calls (see the header of this file).
+ENV NODE_ENV=production \
+    EXPO_PUBLIC_API_URL= \
+    EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN}
+RUN pnpm --filter @repo/mobile export:web
+
+# ---------------------------------------------------------------------------------------------
+# runner: Caddy with the static files only, non-root user, read-only friendly (state in /tmp).
+# ---------------------------------------------------------------------------------------------
+FROM ${CADDY_IMAGE} AS runner
+ENV PORT=8080 \
+    API_UPSTREAM=http://server:4000 \
+    XDG_CONFIG_HOME=/tmp/caddy/config \
+    XDG_DATA_HOME=/tmp/caddy/data
+# The upstream binary carries a cap_net_bind_service file capability, which makes exec fail
+# under `cap_drop: ALL` + `no-new-privileges`. Port 8080 needs no capability: drop it by copying.
+RUN cp /usr/bin/caddy /usr/bin/caddy.nocap && mv /usr/bin/caddy.nocap /usr/bin/caddy \
+    && addgroup -S web && adduser -S -D -H -G web web
+COPY --from=installer /app/apps/mobile/Caddyfile /etc/caddy/Caddyfile
+COPY --from=installer /app/apps/mobile/dist/web /srv
+USER web
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -O /dev/null "http://127.0.0.1:${PORT}/health" || exit 1
+STOPSIGNAL SIGTERM
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

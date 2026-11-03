@@ -1,0 +1,43 @@
+# Registro completo contra un API real (apps/server corriendo y accesible desde el dispositivo).
+# Variables: MAESTRO_NAME, MAESTRO_EMAIL (debe ser único) y MAESTRO_PASSWORD (mín. 8 caracteres).
+appId: cl.bnp.farmacias
+name: Registro de usuario
+env:
+  MAESTRO_NAME: ${MAESTRO_NAME || "Usuario Maestro"}
+  MAESTRO_EMAIL: ${MAESTRO_EMAIL || "maestro+" + Date.now() + "@example.cl"}
+  MAESTRO_PASSWORD: ${MAESTRO_PASSWORD || "maestro-password-123"}
+tags:
+  - e2e
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil:
+    visible: "Regístrate"
+    timeout: 20000
+- tapOn: "Regístrate"
+- assertVisible:
+    id: "sign-up-submit"
+- tapOn:
+    id: "sign-up-name"
+- inputText: ${MAESTRO_NAME}
+- tapOn:
+    id: "sign-up-email"
+- inputText: ${MAESTRO_EMAIL}
+- tapOn:
+    id: "sign-up-password"
+- inputText: ${MAESTRO_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "sign-up-submit"
+- extendedWaitUntil:
+    visible:
+      id: "home-title"
+    timeout: 20000
+- assertVisible: ${MAESTRO_EMAIL}
+- tapOn:
+    id: "sign-out"
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-submit"
+    timeout: 10000

@@ -1,0 +1,5 @@
+# Configuración de la suite de Maestro (`maestro test .maestro`).
+flows:
+  - "*.yaml"
+excludeTags:
+  - manual
