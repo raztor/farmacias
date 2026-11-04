@@ -79,9 +79,13 @@ const pnpm = (
   env,
 });
 
-/** `prisma migrate deploy` (creates the E2E database when missing) and the idempotent seed. */
+/**
+ * Generates the Prisma client (it is git-ignored, so a fresh checkout such as CI has none),
+ * then `prisma migrate deploy` (creates the E2E database when missing) and the idempotent seed.
+ */
 export async function prepareDatabase(config: StackConfig): Promise<void> {
   const env = serverEnv(config);
+  await runStep(pnpm("db-generate", ["--filter", "@repo/db", "db:generate"], env));
   await runStep(pnpm("db-migrate", ["--filter", "@repo/db", "db:deploy"], env));
   await runStep(pnpm("db-seed", ["--filter", "@repo/server", "db:seed"], env));
 }
