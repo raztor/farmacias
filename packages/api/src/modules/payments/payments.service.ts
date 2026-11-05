@@ -10,12 +10,13 @@ import {
   type OrderRef,
   type TransitionActor,
 } from "../orders";
-import type { ChargeResult, PaymentGateway } from "./payment-gateway";
+import type { ChargeOutcome, ChargeResult, PaymentGateway } from "./payment-gateway";
 import {
   REJECTED_MESSAGE,
   approvedMessage,
   idempotencyKeyReusedError,
   orderNotPayableError,
+  replayedMessage,
   stockConflictError,
 } from "./payments.errors";
 import {
@@ -48,6 +49,11 @@ type TxOutcome =
   | { kind: "result"; result: PaymentResult }
   | { kind: "stock_conflict"; products: StockConflictProduct[] };
 
+const messageFor = (outcome: ChargeOutcome, order: OrderRef, replayed: boolean): string => {
+  if (replayed) return replayedMessage(outcome, order);
+  return outcome === "approved" ? approvedMessage(order.code) : REJECTED_MESSAGE;
+};
+
 const toResult = (payment: PaymentRecord, order: OrderRef, replayed: boolean): TxOutcome => {
   const outcome = payment.status === "approved" ? "approved" : "rejected";
   return {
@@ -57,7 +63,7 @@ const toResult = (payment: PaymentRecord, order: OrderRef, replayed: boolean): T
       outcome,
       reference: payment.reference ?? "",
       replayed,
-      message: outcome === "approved" ? approvedMessage(order.code) : REJECTED_MESSAGE,
+      message: messageFor(outcome, order, replayed),
       order: {
         id: order.id,
         code: order.code,

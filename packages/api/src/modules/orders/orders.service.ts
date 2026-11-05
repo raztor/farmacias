@@ -66,6 +66,7 @@ const assertAvailable = (product: ProductStock, quantity: number, inDraft: numbe
     commercialName: product.commercialName,
     maxAllowed: Math.max(0, max - inDraft),
     inDraft,
+    lineCapReached: product.onHand > ORDER_LINE_MAX_QUANTITY,
   });
 };
 

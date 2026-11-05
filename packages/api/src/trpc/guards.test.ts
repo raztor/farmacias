@@ -3,12 +3,30 @@ import { ROLE_VALUES } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 
 import { createTestSession } from "../testing/fakes";
-import { ROLE_REQUIREMENTS, requireIdentity, requireRole, type RoleRequirement } from "./guards";
+import {
+  IMPERSONATED_SESSION_MESSAGE,
+  ROLE_REQUIREMENTS,
+  requireIdentity,
+  requireRole,
+  type RoleRequirement,
+} from "./guards";
 
 describe("requireIdentity", () => {
   it("rejects anonymous requests with UNAUTHORIZED", () => {
     expect(() => requireIdentity(null)).toThrow(TRPCError);
     expect(() => requireIdentity(null)).toThrow(expect.objectContaining({ code: "UNAUTHORIZED" }));
+  });
+
+  it("rejects an impersonated session with FORBIDDEN, whatever its role", () => {
+    const resident = createTestSession({ id: "res-1", role: "resident" });
+    const impersonated = {
+      ...resident,
+      session: { ...resident.session, impersonatedBy: "admin-1" },
+    };
+
+    expect(() => requireIdentity(impersonated)).toThrow(
+      expect.objectContaining({ code: "FORBIDDEN", message: IMPERSONATED_SESSION_MESSAGE }),
+    );
   });
 
   it("returns the session, the user and the effective role", () => {

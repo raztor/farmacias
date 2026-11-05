@@ -118,4 +118,14 @@ describe("procedure guards", () => {
     await expect(multiCaller.operator()).resolves.toBe("operator");
     await expect(multiCaller.resident()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("refuses an impersonated session on every protected procedure (R-ACC-12)", async () => {
+    const resident = createTestSession({ id: "res-imp-1", role: "resident" });
+    resident.session.impersonatedBy = "admin-1";
+    const caller = createCaller(await createTestContext({ session: resident }));
+
+    await expect(caller.public()).resolves.toBe("ok");
+    await expect(caller.protected()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.resident()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });

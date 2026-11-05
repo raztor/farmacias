@@ -86,6 +86,27 @@ describe("operations service: queue and detail", () => {
       expect(third.nextCursor).toBeNull();
     });
 
+    it("keeps its place when the cursor order leaves the filter between pages", async () => {
+      addOrder("000011", "payment_validated", "pickup");
+      const filter = { limit: 2, status: ["payment_validated"] };
+      const first = await service().queue(operator, query(filter));
+      expect(codes(first)).toEqual(["P-000003", "P-000010"]);
+
+      mem.order("000010").status = "in_preparation"; // another operator moved it
+      const second = await service().queue(
+        operator,
+        query({ ...filter, cursor: first.nextCursor ?? undefined }),
+      );
+
+      expect(codes(second)).toEqual(["P-000011"]);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it("returns no rows for a cursor that is not an order", async () => {
+      const result = await service().queue(operator, query({ cursor: "missing" }));
+      expect(result).toEqual({ items: [], nextCursor: null });
+    });
+
     it("maps each row with a Spanish status label and the item count", async () => {
       mem.addProduct({ id: "p1" });
       mem.addLine({ orderId: "000001", productId: "p1", quantity: 3, unitPriceClp: 1000 });

@@ -21,8 +21,33 @@ const matches = (query: QueueQuery) => (order: MemOrder) =>
   (query.fulfillment === undefined || order.fulfillment === query.fulfillment) &&
   (query.q === undefined || order.code.startsWith(query.q));
 
+const compareIds = (a: string, b: string): number => {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+};
+
 const fifo = (a: QueueRecord, b: QueueRecord): number =>
-  a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : 1);
+  a.createdAt.getTime() - b.createdAt.getTime() || compareIds(a.id, b.id);
+
+/**
+ * Same keyset as PostgreSQL: rows strictly after the cursor order in FIFO order, whose position
+ * ignores the filters; an unknown cursor yields nothing (never a restart from the first row).
+ */
+const queuePage = (
+  orders: readonly MemOrder[],
+  query: QueueQuery,
+  toRecord: (order: MemOrder) => QueueRecord,
+): QueueRecord[] => {
+  const cursorOrder = orders.find((order) => order.id === query.cursor);
+  if (query.cursor && !cursorOrder) return [];
+  const at = cursorOrder ? toRecord(cursorOrder) : undefined;
+  return orders
+    .filter(matches(query))
+    .map(toRecord)
+    .filter((row) => !at || fifo(row, at) > 0)
+    .sort(fifo)
+    .slice(0, query.take);
+};
 
 export type InMemoryOperationsOptions = {
   /** Display names of actors by user id (history). */
@@ -91,9 +116,7 @@ export const createInMemoryOperationsRepository = (
     queries,
     queue: (query) => {
       queries.push(query);
-      const sorted = mem.state.orders.filter(matches(query)).map(toQueueRecord).sort(fifo);
-      const start = query.cursor ? sorted.findIndex((row) => row.id === query.cursor) + 1 : 0;
-      return Promise.resolve(sorted.slice(start, start + query.take));
+      return Promise.resolve(queuePage(mem.state.orders, query, toQueueRecord));
     },
     findOrder: (id) => {
       const order = mem.state.orders.find((candidate) => candidate.id === id);

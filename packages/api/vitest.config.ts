@@ -12,7 +12,9 @@ export default defineConfig({
       exclude: ["src/**/*.test.ts", "src/testing/**", "src/**/index.ts"],
       reporter: ["text", "json-summary"],
       thresholds: {
-        "src/modules/**/*.service.ts": { lines: 80 },
+        // REPO_RULES §8: ≥ 80 % of lines in EACH service. Without `perFile`, Vitest checks the
+        // aggregate of every matched file, so an untested service could hide behind the others.
+        "src/modules/**/*.service.ts": { lines: 80, perFile: true },
       },
     },
   },

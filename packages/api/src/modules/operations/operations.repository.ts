@@ -50,7 +50,11 @@ export type OrderDetailRecord = QueueRecord & {
 
 /** Read side of the back office. Writes go through the orders transition service. */
 export type OperationsRepository = {
-  /** Oldest first by `created_at`, ties by `id` (FIFO, R-OPS-02). */
+  /**
+   * Oldest first by `created_at`, ties by `id` (FIFO, R-OPS-02). `cursor` is the id of the last
+   * order of the previous page: rows strictly after it, even if it no longer matches the filters;
+   * an id that is not an order yields no rows.
+   */
   queue: (query: QueueQuery) => Promise<QueueRecord[]>;
   findOrder: (id: string) => Promise<OrderDetailRecord | null>;
 };
@@ -173,13 +177,35 @@ const queueWhere = ({ statuses, fulfillment, q }: QueueQuery): Prisma.OrderWhere
   ...(q ? { code: { startsWith: q } } : {}),
 });
 
+/**
+ * Keyset condition: orders strictly after the cursor order in `(created_at, id)` order, or `null`
+ * when the cursor is not an order. The cursor's position is read by id **without** the filters:
+ * if the cursor order left the filter between pages (another operator moved it), it still marks
+ * where the previous page ended. Prisma's `cursor` + `skip: 1` would instead skip the next
+ * matching order (R-OPS-02). The `created_at` of a non-draft order never changes (R-DAT-11).
+ */
+const afterCursor = async (
+  db: PrismaClient,
+  cursor: string,
+): Promise<Prisma.OrderWhereInput | null> => {
+  const at = await db.order.findUnique({
+    where: { id: cursor },
+    select: { id: true, createdAt: true },
+  });
+  if (!at) return null;
+  return {
+    OR: [{ createdAt: { gt: at.createdAt } }, { createdAt: at.createdAt, id: { gt: at.id } }],
+  };
+};
+
 export const createOperationsRepository = (db: PrismaClient): OperationsRepository => ({
-  queue: async (query) => {
+  queue: async ({ cursor, ...query }) => {
+    const after = cursor ? await afterCursor(db, cursor) : undefined;
+    if (after === null) return [];
     const rows = await db.order.findMany({
-      where: queueWhere(query),
+      where: after ? { AND: [queueWhere(query), after] } : queueWhere(query),
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       take: query.take,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       select: QUEUE_SELECT,
     });
     return rows.map(toQueueRecord);

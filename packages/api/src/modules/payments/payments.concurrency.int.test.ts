@@ -13,6 +13,7 @@ import {
   resetDatabase,
 } from "../../testing/integration";
 import { createPaymentsRepository } from "./payments.repository";
+import type { StockConflictProduct } from "./payments.schema";
 import { createPaymentsService } from "./payments.service";
 import { createSimulatedPaymentGateway } from "./simulated-payment-gateway";
 
@@ -32,6 +33,47 @@ describe.skipIf(!INTEGRATION_ENABLED)("payments.pay under concurrency", () => {
   afterAll(async () => {
     await disconnectTestDb();
   });
+
+  /**
+   * Asserts that every rejected payment is CONFLICT `STOCK_CONFLICT` and that each one reports a
+   * product whose requested quantity really exceeded the stock seen under the lock. Returns how
+   * many payments were rejected.
+   */
+  const expectOnlyStockConflicts = (results: readonly PromiseSettledResult<unknown>[]): number => {
+    const rejected = results.filter((result) => result.status === "rejected");
+    for (const failure of rejected) {
+      expect(failure.reason).toMatchObject({
+        code: "CONFLICT",
+        details: { reason: "STOCK_CONFLICT" },
+      });
+      const { products } = (failure.reason as { details: { products: StockConflictProduct[] } })
+        .details;
+      expect(products.some((product) => product.requested > product.available)).toBe(true);
+    }
+    return rejected.length;
+  };
+
+  /** 20 pending orders for A and B, half of them with their lines in reverse order. */
+  const createMultiLineOrders = (residentId: string, productA: string, productB: string) => {
+    const plans = Array.from({ length: 20 }, (_, index) => ({
+      qa: 1 + (index % 2),
+      qb: 1 + ((index + 1) % 3 === 0 ? 1 : 0),
+      reversed: index % 2 === 0,
+    }));
+    return Promise.all(
+      plans.map(async (plan) => {
+        const lines = [
+          { productId: productA, quantity: plan.qa },
+          { productId: productB, quantity: plan.qb },
+        ];
+        const order = await createOrder(db(), residentId, {
+          status: "pending_payment",
+          lines: plan.reversed ? lines.reverse() : lines,
+        });
+        return { order, plan };
+      }),
+    );
+  };
 
   const onHand = async (productId: string) =>
     (await db().inventoryItem.findUniqueOrThrow({ where: { productId } })).onHand;
@@ -82,26 +124,9 @@ describe.skipIf(!INTEGRATION_ENABLED)("payments.pay under concurrency", () => {
     const resident = await createUser(db());
     const a = await createProduct(db(), { onHand: 7 });
     const b = await createProduct(db(), { onHand: 9 });
-    const plans = Array.from({ length: 20 }, (_, index) => ({
-      qa: 1 + (index % 2),
-      qb: 1 + ((index + 1) % 3 === 0 ? 1 : 0),
-      reversed: index % 2 === 0,
-    }));
-    const orders = await Promise.all(
-      plans.map(async (plan) => {
-        const lines = [
-          { productId: a.id, quantity: plan.qa },
-          { productId: b.id, quantity: plan.qb },
-        ];
-        const order = await createOrder(db(), resident.id, {
-          status: "pending_payment",
-          lines: plan.reversed ? lines.reverse() : lines,
-        });
-        return { order, plan };
-      }),
-    );
+    const orders = await createMultiLineOrders(resident.id, a.id, b.id);
 
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       orders.map(({ order }) =>
         service().pay({
           residentId: resident.id,
@@ -112,6 +137,16 @@ describe.skipIf(!INTEGRATION_ENABLED)("payments.pay under concurrency", () => {
       ),
     );
 
+    // A deadlock (40P01/P2034), a timeout (P2028) or any other failure is a bug: the only
+    // acceptable rejection is a real stock conflict, reported under the inventory locks.
+    const rejected = expectOnlyStockConflicts(results);
+    expect(results.length - rejected).toBe(
+      await db().order.count({ where: { status: "payment_validated" } }),
+    );
+    expect(await db().payment.count({ where: { status: "stock_conflict" } })).toBe(rejected);
+    expect(await db().payment.count({ where: { status: "approved" } })).toBe(
+      results.length - rejected,
+    );
     const validated = await db().order.findMany({ where: { status: "payment_validated" } });
     const validatedIds = new Set(validated.map((order) => order.id));
     const sold = orders.filter(({ order }) => validatedIds.has(order.id));

@@ -71,7 +71,7 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog (PostgreSQL)", () => {
 
     beforeAll(async () => {
       await resetDatabase(testDb());
-      await seedCatalog(testDb(), { buildSearchText: buildProductSearchText });
+      await seedCatalog(testDb());
       caller = await anonymousCaller(testDb());
     });
 
@@ -126,6 +126,33 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog (PostgreSQL)", () => {
 
       expect(items.length).toBeGreaterThan(0);
       expect(items.every((item) => item.presentation.includes("100 mg"))).toBe(true);
+    });
+
+    it("finds a dose typed without a space ('losartán 50mg', 'losartan50', 'celecoxib 200mg')", async () => {
+      const spaced = await caller.catalog.search({ q: "losartan 50 mg", limit: 50 });
+      const unspaced = await caller.catalog.search({ q: "Losartán 50mg", limit: 50 });
+      const glued = await caller.catalog.search({ q: "losartan50", limit: 50 });
+      const celecoxib = await caller.catalog.search({ q: "celecoxib 200mg", limit: 50 });
+
+      expect(spaced.items.length).toBeGreaterThan(0);
+      const ids = (page: typeof spaced) => page.items.map((item) => item.id);
+      expect(ids(unspaced)).toEqual(ids(spaced));
+      expect(ids(glued)).toEqual(ids(spaced));
+      expect(celecoxib.items.length).toBeGreaterThan(0);
+      expect(celecoxib.items.every((item) => item.presentation.includes("200 mg"))).toBe(true);
+    });
+
+    it("keeps short codes as one token: 'd3' and 'om3' do not match the whole catalog", async () => {
+      const d3 = await caller.catalog.search({ q: "D3", limit: 50 });
+      const om3 = await caller.catalog.search({ q: "om3", limit: 50 });
+
+      const expected = expectedFor("d3");
+      expect(expected.length).toBeGreaterThan(0);
+      expect(expected.length).toBeLessThan(seedProducts.length / 10);
+      expect(d3.items.map((item) => item.commercialName).sort()).toEqual(
+        expected.map((product) => product.commercialName).sort(),
+      );
+      expect(om3.items).toEqual([]);
     });
 
     it("shows price and availability computed from inventory, with only public fields", async () => {

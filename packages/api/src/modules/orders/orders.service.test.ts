@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { InMemoryOrdering } from "../../testing/in-memory-ordering";
+import { DRAFT_NOT_FOUND_MESSAGE } from "./orders.errors";
 import { createOrdersService, type OrdersService } from "./orders.service";
 
 const RESIDENT = "resident-1";
@@ -94,6 +95,19 @@ describe("orders service — draft (HU-03)", () => {
     ).rejects.toMatchObject({ details: { maxAllowed: 9 } });
   });
 
+  it("says the 99-per-line cap, not the stock, is the limit when more units exist", async () => {
+    mem.addProduct({ id: "p-big", commercialName: "Paracetamol", onHand: 150 });
+    await service.addItem({ residentId: RESIDENT, productId: "p-big", quantity: 99 });
+
+    await expect(
+      service.addItem({ residentId: RESIDENT, productId: "p-big", quantity: 1 }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Ya tienes en tu pedido 99 unidades de Paracetamol, el máximo por producto.",
+      details: { reason: "QUANTITY_EXCEEDS_AVAILABLE", maxAllowed: 0 },
+    });
+  });
+
   it("explains when nothing more can be added", async () => {
     mem.addProduct({ id: "p-out", commercialName: "Celecoxib", onHand: 0 });
     await expect(
@@ -171,6 +185,35 @@ describe("orders service — draft (HU-03)", () => {
     });
     expect(draft.id).not.toBe("o-pending");
     expect(mem.linesOf("o-pending")).toEqual([]);
+  });
+});
+
+describe("orders service — after confirming (R-ORD-15)", () => {
+  beforeEach(() => {
+    mem.addOrder({ id: "o-pending", residentId: RESIDENT, status: "pending_payment" });
+    mem.addLine({ orderId: "o-pending", productId: "p-losartan", quantity: 2, unitPriceClp: 2490 });
+  });
+
+  it("a stale edit answers NOT_FOUND pointing to «Mis pedidos» and never touches the order", async () => {
+    const noDraft = {
+      code: "NOT_FOUND",
+      message: DRAFT_NOT_FOUND_MESSAGE,
+      details: { reason: "NO_DRAFT" },
+    };
+
+    await expect(
+      service.setQuantity({ residentId: RESIDENT, productId: "p-losartan", quantity: 1 }),
+    ).rejects.toMatchObject(noDraft);
+    await expect(
+      service.removeItem({ residentId: RESIDENT, productId: "p-losartan" }),
+    ).rejects.toMatchObject(noDraft);
+    await expect(
+      service.setFulfillment({ residentId: RESIDENT, type: "pickup" }),
+    ).rejects.toMatchObject(noDraft);
+    expect(mem.linesOf("o-pending")).toEqual([
+      expect.objectContaining({ productId: "p-losartan", quantity: 2 }),
+    ]);
+    expect(mem.statusOf("o-pending")).toBe("pending_payment");
   });
 });
 

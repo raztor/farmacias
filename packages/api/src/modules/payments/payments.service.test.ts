@@ -150,6 +150,31 @@ describe("payments service — idempotency (HU-05 #3)", () => {
     });
   });
 
+  it("tells a replayed rejection that the order was paid since (RNF-09)", async () => {
+    await pay({ scenario: "reject" });
+    await pay({ idempotencyKey: KEY_2 });
+
+    const replay = await pay({ scenario: "reject" });
+
+    expect(replay).toMatchObject({ outcome: "rejected", replayed: true });
+    expect(replay.order.status).toBe("payment_validated");
+    expect(replay.message).toBe(
+      "Este intento de pago ya había sido rechazado. Tu pedido P-o1 ahora está en «Pago validado». " +
+        "Revisa su estado en «Mis pedidos».",
+    );
+  });
+
+  it("tells a replayed approval that the order was cancelled since (RNF-09)", async () => {
+    await pay();
+    mem.order("o1").status = "cancelled";
+
+    const replay = await pay();
+
+    expect(replay).toMatchObject({ outcome: "approved", replayed: true });
+    expect(replay.message).not.toContain("pronto comenzará su preparación");
+    expect(replay.message).toContain("ahora está en «Cancelado»");
+  });
+
   it("refuses a key that belongs to another order's attempt", async () => {
     mem.addOrder({
       id: "o2",

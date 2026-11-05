@@ -61,10 +61,60 @@ const rankSql = (alias: "p" | "c", term: string | undefined): Prisma.Sql => {
     THEN 0 ELSE 1 END)`;
 };
 
-/** Distinct words of a normalized term ("celecoxib 200" → ["celecoxib", "200"]). */
-export const termWords = (term: string): string[] => [
-  ...new Set(term.split(" ").filter((word) => word.length > 0)),
-];
+/** Between a digit and a letter, in either order ("50mg", "losartan50"). */
+const DIGIT_LETTER_BOUNDARY = /(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)/g;
+const LETTERS = /^[a-z]+$/;
+/** Dose units typed glued to the number ("5mg", "100mcg"): never a word of their own. */
+const DOSE_UNITS: ReadonlySet<string> = new Set([
+  "mg",
+  "mcg",
+  "ug",
+  "g",
+  "kg",
+  "ml",
+  "l",
+  "ui",
+  "cc",
+]);
+/** Shortest letter run treated as a word of its own when glued to digits ("losartan50"). */
+const MIN_WORD_LETTERS = 3;
+
+/**
+ * How one word of the term matches `search_text`: any alternative, each a list of substrings
+ * that must all appear. A plain word is `[["losartan"]]`.
+ */
+export type WordMatcher = readonly (readonly string[])[];
+
+/** True when a segment is a word of its own ("losartan"), not a unit ("mg") nor a code ("d"). */
+const isWordSegment = (segment: string): boolean =>
+  LETTERS.test(segment) && !DOSE_UNITS.has(segment) && segment.length >= MIN_WORD_LETTERS;
+
+/**
+ * Matcher of one word (R-CAT-03). A word glued to a number ("losartan50") is split into
+ * independent words, like typing it spaced: the name and the dose are not contiguous in
+ * `search_text`. Any other digit/letter mix, a dose ("50mg", "5mg") or a code ("d3", "b12", "om3",
+ * "x10"), stays one token, matched as typed or with a space at the boundary ("50 mg", "d 3"):
+ * splitting it into single letters and digits would match almost the whole catalog.
+ */
+const wordMatcher = (word: string): WordMatcher => {
+  const segments = word.replace(DIGIT_LETTER_BOUNDARY, " ").split(" ");
+  if (segments.length === 1) return [[word]];
+  if (segments.some(isWordSegment)) return [segments];
+  return [[word], [segments.join(" ")]];
+};
+
+/** Matchers of the distinct words of a normalized term ("celecoxib 200" → two words). */
+export const termMatchers = (term: string): WordMatcher[] =>
+  [...new Set(term.split(" ").filter((word) => word.length > 0))].map(wordMatcher);
+
+const containsSql = (text: string): Prisma.Sql =>
+  Prisma.sql`p.search_text LIKE ${`%${escapeLikePattern(text)}%`}`;
+
+const wordMatcherSql = (matcher: WordMatcher): Prisma.Sql =>
+  Prisma.sql`AND (${Prisma.join(
+    matcher.map((all) => Prisma.sql`(${Prisma.join(all.map(containsSql), " AND ")})`),
+    " OR ",
+  )})`;
 
 /**
  * Every word of the term must be a substring of `search_text` (R-CAT-03). For a single word
@@ -72,14 +122,9 @@ export const termWords = (term: string): string[] => [
  * "celebrin sur celecoxib capsulas 200 mg x 10". Each LIKE can use the trigram index.
  */
 const filtersSql = ({ term, category }: CatalogSearchRepoQuery): Prisma.Sql => {
-  const words = term ? termWords(term) : [];
+  const matchers = term ? termMatchers(term) : [];
   const termFilter =
-    words.length > 0
-      ? Prisma.join(
-          words.map((word) => Prisma.sql`AND p.search_text LIKE ${`%${escapeLikePattern(word)}%`}`),
-          " ",
-        )
-      : Prisma.empty;
+    matchers.length > 0 ? Prisma.join(matchers.map(wordMatcherSql), " ") : Prisma.empty;
   const categoryFilter = category ? Prisma.sql`AND p.category = ${category}` : Prisma.empty;
   return Prisma.sql`p.active ${termFilter} ${categoryFilter}`;
 };

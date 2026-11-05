@@ -1,6 +1,7 @@
 import { AppError, type OrderStatus } from "@repo/shared";
 
-import { statusLabel } from "../order-status";
+import { isPayableStatus, statusLabel } from "../order-status";
+import type { ChargeOutcome } from "./payment-gateway";
 import type { StockConflictProduct } from "./payments.schema";
 
 export const approvedMessage = (code: string): string =>
@@ -8,6 +9,26 @@ export const approvedMessage = (code: string): string =>
 
 export const REJECTED_MESSAGE =
   "Tu pago simulado fue rechazado. Puedes intentarlo de nuevo o cancelar el pedido.";
+
+type ReplayedOrder = { code: string; status: OrderStatus };
+
+/**
+ * Message of a replayed attempt (R-PAY-04/05, RNF-09). The stored outcome stays true, but the
+ * order may have moved on since (cancelled, paid with another key, in preparation…): the
+ * original message is reused only while it still describes the order; otherwise the text says
+ * what happened to the attempt and where the order is now.
+ */
+export const replayedMessage = (outcome: ChargeOutcome, order: ReplayedOrder): string => {
+  const now = `Tu pedido ${order.code} ahora está en «${statusLabel(order.status)}».`;
+  if (outcome === "approved") {
+    return order.status === "payment_validated"
+      ? approvedMessage(order.code)
+      : `Este pago simulado ya había sido aprobado. ${now} Revisa su seguimiento en «Mis pedidos».`;
+  }
+  return isPayableStatus(order.status)
+    ? REJECTED_MESSAGE
+    : `Este intento de pago ya había sido rechazado. ${now} Revisa su estado en «Mis pedidos».`;
+};
 
 /** R-PAY-02: drafts, cancelled orders… cannot be paid. */
 export const orderNotPayableError = (status: OrderStatus): AppError =>

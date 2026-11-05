@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 
 import { buildCatalogProducts, seedCatalog, type PrismaClient } from "@repo/db";
-import { buildProductSearchText, noopLogger } from "@repo/shared";
+import { noopLogger } from "@repo/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createCaller, type CatalogSearchInput } from "../../index";
@@ -116,7 +116,7 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog.search performance (T-10, RNF-04)
     // seedCatalog runs one batch transaction (Prisma's 5 s limit): seed in chunks.
     for (let start = 0; start < catalog.length; start += SEED_CHUNK_SIZE) {
       const chunk = catalog.slice(start, start + SEED_CHUNK_SIZE);
-      await seedCatalog(testDb(), { buildSearchText: buildProductSearchText, products: chunk });
+      await seedCatalog(testDb(), { products: chunk });
     }
     await testDb().$executeRaw`ANALYZE products, inventory_items`;
     products = await testDb().product.count({ where: { active: true } });
