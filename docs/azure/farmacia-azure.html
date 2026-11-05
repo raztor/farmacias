@@ -1,0 +1,974 @@
+<title>Farmacia en Azure</title>
+<meta name="claude:viewport-fit-sides" content="cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+/>
+<style>
+  /* Layout: one technical column, the topology figure as the centerpiece, then cost and decisions side by side. */
+  :root {
+    --bg: #f4f7f6;
+    --surface: #ffffff;
+    --zone: #e9f0ee;
+    --fg: #14201e;
+    --muted: #566a66;
+    --line: #c3d0cd;
+    --accent: #0b7f57;
+    --accent-soft: #dcf1e7;
+    --warn: #9a5c00;
+    --warn-soft: #fbefd9;
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1514;
+      --surface: #16201e;
+      --zone: #121c1a;
+      --fg: #e2ebe8;
+      --muted: #93a7a2;
+      --line: #34443f;
+      --accent: #43cf97;
+      --accent-soft: #12302a;
+      --warn: #e8aa45;
+      --warn-soft: #30250f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1514;
+    --surface: #16201e;
+    --zone: #121c1a;
+    --fg: #e2ebe8;
+    --muted: #93a7a2;
+    --line: #34443f;
+    --accent: #43cf97;
+    --accent-soft: #12302a;
+    --warn: #e8aa45;
+    --warn-soft: #30250f;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--f-body);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-block: 40px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 40px;
+  }
+  h1,
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  h1 {
+    font-size: clamp(30px, 4.4vw, 44px);
+    line-height: 1.05;
+  }
+  h2 {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+  p {
+    margin: 0;
+    max-width: 68ch;
+  }
+  code,
+  .mono {
+    font-family: var(--f-mono);
+    font-size: 0.88em;
+  }
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  header {
+    display: grid;
+    gap: 14px;
+  }
+  .lede {
+    color: var(--muted);
+    font-size: 16px;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    margin: 6px 0 0;
+    padding: 0;
+  }
+  .facts div {
+    display: grid;
+    gap: 2px;
+  }
+  .facts dt {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .facts dd {
+    margin: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .facts dd.big {
+    color: var(--accent);
+  }
+  section {
+    display: grid;
+    gap: 14px;
+  }
+  figure {
+    margin: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .scroll {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .scroll svg {
+    display: block;
+    width: 100%;
+    min-width: 900px;
+    height: auto;
+  }
+  figcaption {
+    color: var(--muted);
+    font-size: 13.5px;
+    max-width: 90ch;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sw {
+    width: 22px;
+    height: 0;
+    border-top: 2px solid var(--muted);
+  }
+  .sw.pub {
+    border-color: var(--accent);
+  }
+  .sw.job {
+    width: 16px;
+    height: 12px;
+    border: 1.5px dashed var(--muted);
+    border-radius: 3px;
+  }
+
+  /* SVG */
+  .z-vnet {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.2;
+    stroke-dasharray: 6 5;
+  }
+  .z-env {
+    fill: var(--zone);
+    stroke: var(--line);
+    stroke-width: 1.2;
+  }
+  .zl {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    fill: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .n rect {
+    fill: var(--surface);
+    stroke: var(--line);
+    stroke-width: 1.2;
+  }
+  .n.pub rect {
+    stroke: var(--accent);
+    stroke-width: 1.8;
+  }
+  .n.job rect {
+    stroke-dasharray: 5 4;
+    stroke: var(--muted);
+  }
+  .n.ext rect {
+    fill: var(--bg);
+  }
+  .t {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    font-weight: 500;
+    fill: var(--fg);
+  }
+  .s {
+    font-family: var(--f-body);
+    font-size: 11.5px;
+    fill: var(--muted);
+  }
+  .c {
+    font-family: var(--f-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    fill: var(--muted);
+  }
+  .n.pub .c {
+    fill: var(--accent);
+  }
+  .e {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.4;
+  }
+  .e.pub {
+    stroke: var(--accent);
+    stroke-width: 1.8;
+  }
+  .ah {
+    fill: var(--muted);
+  }
+  .ah.pub {
+    fill: var(--accent);
+  }
+  .l {
+    font-family: var(--f-body);
+    font-size: 11px;
+    font-weight: 500;
+    fill: var(--fg);
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+  }
+  .l.z {
+    stroke: var(--zone);
+  }
+  .l.pub {
+    fill: var(--accent);
+  }
+  .step-n {
+    font-family: var(--f-display);
+    font-size: 20px;
+    font-weight: 600;
+    fill: var(--accent);
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .cols {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .tbl {
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 9px 10px 9px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  td.num,
+  th.num {
+    text-align: right;
+    padding-right: 0;
+    white-space: nowrap;
+  }
+  td small {
+    display: block;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  tfoot td {
+    font-weight: 600;
+    border-bottom: none;
+    padding-top: 12px;
+  }
+  tfoot tr.alt td {
+    font-weight: 400;
+    color: var(--muted);
+    padding-top: 2px;
+  }
+  .note {
+    font-size: 13.5px;
+    color: var(--muted);
+  }
+
+  .dl {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+  }
+  .dl div {
+    display: grid;
+    gap: 3px;
+    padding-left: 14px;
+    border-left: 2px solid var(--line);
+  }
+  .dl dt {
+    font-weight: 600;
+  }
+  .dl dd {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .dl .no dt {
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .dl .no dt::before {
+    content: "Descartado · ";
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  ol.todo,
+  ul.risk {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 12px;
+  }
+  ol.todo {
+    counter-reset: t;
+  }
+  ol.todo li {
+    counter-increment: t;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 4px 10px;
+  }
+  ol.todo li::before {
+    content: counter(t);
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--accent);
+    line-height: 1.4;
+  }
+  ol.todo li > * {
+    grid-column: 2;
+  }
+  ol.todo b,
+  ul.risk b {
+    font-weight: 600;
+  }
+  ol.todo p,
+  ul.risk p {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul.risk li {
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--warn-soft);
+    display: grid;
+    gap: 3px;
+  }
+  ul.risk li b {
+    color: var(--warn);
+  }
+  .next {
+    background: var(--accent-soft);
+    border-radius: 10px;
+    padding: 18px 20px;
+    display: grid;
+    gap: 8px;
+  }
+  .next h2 {
+    font-size: 19px;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Arquitectura de despliegue · pre-producción</div>
+    <h1>Farmacia Comunitaria Peñalolén en Azure</h1>
+    <p class="lede">
+      Ambiente de pre-producción conectado a la rama QA: Container Apps con escalado a cero,
+      PostgreSQL y Redis gestionados en red privada, y email con Azure Communication Services.
+      Prioriza el costo mínimo y no usa VMs.
+    </p>
+    <dl class="facts">
+      <div>
+        <dt>Ambiente</dt>
+        <dd>Pre-producción</dd>
+      </div>
+      <div>
+        <dt>Rama</dt>
+        <dd class="mono">QA</dd>
+      </div>
+      <div>
+        <dt>Resource group</dt>
+        <dd class="mono">rg-farmacia-bm</dd>
+      </div>
+      <div>
+        <dt>Región</dt>
+        <dd>East US 2</dd>
+      </div>
+      <div>
+        <dt>IaC</dt>
+        <dd>Bicep</dd>
+      </div>
+      <div>
+        <dt>CI/CD</dt>
+        <dd>GitHub Actions + GHCR</dd>
+      </div>
+      <div>
+        <dt>Costo estimado</dt>
+        <dd class="big">≈ US$ 50–60 / mes</dd>
+      </div>
+      <div>
+        <dt>Tope</dt>
+        <dd>US$ 100 / mes</dd>
+      </div>
+    </dl>
+  </header>
+
+  <section>
+    <h2>Topología en ejecución</h2>
+    <figure>
+      <div class="scroll">
+        <svg
+          viewBox="0 0 1116 610"
+          role="img"
+          aria-label="Los residentes y operadores entran por HTTPS solo a ca-farm-web y ca-farm-admin. Ambos reenvían la API a ca-farm-server, que no tiene entrada pública. El server y el worker usan PostgreSQL Flexible en una subred delegada y Azure Managed Redis por un endpoint privado. El worker envía correos por Azure Communication Services. Los secretos vienen de Key Vault y los logs van a Log Analytics."
+        >
+          <defs>
+            <marker
+              id="ah"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path class="ah" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+            <marker
+              id="ahp"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path class="ah pub" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+          </defs>
+
+          <!-- zones -->
+          <rect class="z-vnet" x="214" y="36" width="652" height="560" rx="10" />
+          <text class="zl" x="228" y="58">vnet-farmacia-bm · 10.40.0.0/16</text>
+          <text class="zl" x="852" y="58" text-anchor="end">East US 2</text>
+          <rect class="z-env" x="234" y="70" width="612" height="352" rx="8" />
+          <text class="zl" x="248" y="92">cae-farmacia-bm · Container Apps (Consumption)</text>
+          <text class="zl" x="832" y="92" text-anchor="end">snet-aca · /27</text>
+
+          <!-- edges: public -->
+          <line class="e pub" x1="170" y1="142" x2="257" y2="142" marker-end="url(#ahp)" />
+          <text class="l pub" x="194" y="134" text-anchor="middle" style="stroke: var(--surface)">
+            HTTPS
+          </text>
+          <line class="e pub" x1="170" y1="282" x2="257" y2="282" marker-end="url(#ahp)" />
+          <text class="l pub" x="194" y="274" text-anchor="middle">HTTPS</text>
+
+          <!-- edges: internal -->
+          <line class="e" x1="420" y1="150" x2="497" y2="199" marker-end="url(#ah)" />
+          <text class="l z" x="428" y="194">/api · /trpc</text>
+          <line class="e" x1="420" y1="274" x2="497" y2="226" marker-end="url(#ah)" />
+          <text class="l z" x="436" y="286">rewrites</text>
+
+          <line class="e" x1="540" y1="244" x2="540" y2="497" marker-end="url(#ah)" />
+          <text class="l" x="548" y="474">SQL · TLS</text>
+          <line class="e" x1="790" y1="244" x2="790" y2="497" marker-end="url(#ah)" />
+          <text class="l" x="782" y="474" text-anchor="end">consume</text>
+          <line class="e" x1="615" y1="244" x2="714" y2="497" marker-end="url(#ah)" />
+          <text class="l z" x="630" y="302" text-anchor="end">encola</text>
+          <line class="e" x1="720" y1="244" x2="616" y2="497" marker-end="url(#ah)" />
+          <text class="l z" x="704" y="302">estado</text>
+
+          <polyline class="e" points="340,404 340,532 497,532" marker-end="url(#ah)" />
+          <text class="l" x="350" y="524">migrate deploy</text>
+
+          <line class="e" x1="830" y1="236" x2="897" y2="299" marker-end="url(#ah)" />
+          <text class="l" x="874" y="254">SMTP 587</text>
+          <line class="e" x1="846" y1="102" x2="897" y2="102" marker-end="url(#ah)" />
+          <text class="l" x="872" y="94" text-anchor="middle">secretos</text>
+          <line class="e" x1="846" y1="192" x2="897" y2="192" marker-end="url(#ah)" />
+          <text class="l" x="872" y="184" text-anchor="middle">logs</text>
+          <line class="e" x1="830" y1="532" x2="897" y2="532" marker-end="url(#ah)" />
+          <text class="l" x="864" y="524" text-anchor="middle">privado</text>
+
+          <!-- people -->
+          <g class="n ext">
+            <rect x="20" y="110" width="150" height="64" rx="6" />
+            <text class="t" x="32" y="132">Residente</text>
+            <text class="s" x="32" y="149">app web (Expo)</text>
+            <text class="c" x="32" y="165">NAVEGADOR</text>
+          </g>
+          <g class="n ext">
+            <rect x="20" y="250" width="150" height="64" rx="6" />
+            <text class="t" x="32" y="272">Operador</text>
+            <text class="s" x="32" y="289">backoffice</text>
+            <text class="c" x="32" y="305">NAVEGADOR</text>
+          </g>
+
+          <!-- container apps -->
+          <g class="n pub">
+            <rect x="260" y="110" width="160" height="64" rx="6" />
+            <text class="t" x="272" y="132">ca-farm-web</text>
+            <text class="s" x="272" y="149">Caddy + Expo web</text>
+            <text class="c" x="272" y="165">PÚBLICO · ESCALA A 0</text>
+          </g>
+          <g class="n pub">
+            <rect x="260" y="250" width="160" height="64" rx="6" />
+            <text class="t" x="272" y="272">ca-farm-admin</text>
+            <text class="s" x="272" y="289">Next.js standalone</text>
+            <text class="c" x="272" y="305">PÚBLICO · ESCALA A 0</text>
+          </g>
+          <g class="n">
+            <rect x="500" y="180" width="150" height="64" rx="6" />
+            <text class="t" x="512" y="202">ca-farm-server</text>
+            <text class="s" x="512" y="219">Fastify + tRPC</text>
+            <text class="c" x="512" y="235">SOLO INTERNO</text>
+          </g>
+          <g class="n">
+            <rect x="680" y="180" width="150" height="64" rx="6" />
+            <text class="t" x="692" y="202">ca-farm-worker</text>
+            <text class="s" x="692" y="219">BullMQ + SMTP</text>
+            <text class="c" x="692" y="235">SIN INGRESS · 1 RÉPL.</text>
+          </g>
+          <g class="n job">
+            <rect x="260" y="340" width="160" height="64" rx="6" />
+            <text class="t" x="272" y="362">caj-farm-migrate</text>
+            <text class="s" x="272" y="379">Job · Prisma 7</text>
+            <text class="c" x="272" y="395">MANUAL · POR RELEASE</text>
+          </g>
+
+          <!-- data -->
+          <g class="n">
+            <rect x="500" y="500" width="150" height="64" rx="6" />
+            <text class="t" x="512" y="522">psql-farmacia-bm</text>
+            <text class="s" x="512" y="539">Flexible B1ms</text>
+            <text class="c" x="512" y="555">SNET-PSQL · SIN IP PÚB.</text>
+          </g>
+          <g class="n">
+            <rect x="680" y="500" width="150" height="64" rx="6" />
+            <text class="t" x="692" y="522">pe-redis</text>
+            <text class="s" x="692" y="539">Private Endpoint</text>
+            <text class="c" x="692" y="555">SNET-PE</text>
+          </g>
+
+          <!-- platform services -->
+          <g class="n">
+            <rect x="900" y="70" width="196" height="64" rx="6" />
+            <text class="t" x="912" y="92">kv-farmacia-bm</text>
+            <text class="s" x="912" y="109">Key Vault · id-farmacia-bm</text>
+            <text class="c" x="912" y="125">RBAC · IDENTIDAD GESTIONADA</text>
+          </g>
+          <g class="n">
+            <rect x="900" y="160" width="196" height="64" rx="6" />
+            <text class="t" x="912" y="182">log-farmacia-bm</text>
+            <text class="s" x="912" y="199">Log Analytics</text>
+            <text class="c" x="912" y="215">TOPE 0.2 GB / DÍA</text>
+          </g>
+          <g class="n">
+            <rect x="900" y="280" width="196" height="64" rx="6" />
+            <text class="t" x="912" y="302">acs-farmacia-bm</text>
+            <text class="s" x="912" y="319">Communication Services Email</text>
+            <text class="c" x="912" y="335">DOMINIO AZURE GRATIS</text>
+          </g>
+          <g class="n">
+            <rect x="900" y="500" width="196" height="64" rx="6" />
+            <text class="t" x="912" y="522">redis-farmacia-bm</text>
+            <text class="s" x="912" y="539">Azure Managed Redis B0</text>
+            <text class="c" x="912" y="555">NOEVICTION · TLS :10000</text>
+          </g>
+        </svg>
+      </div>
+      <div class="legend">
+        <span
+          ><i class="sw pub"></i>Entrada pública con TLS gestionado (*.azurecontainerapps.io)</span
+        >
+        <span><i class="sw"></i>Tráfico interno o privado</span>
+        <span><i class="sw job"></i>Job, no queda corriendo</span>
+      </div>
+      <figcaption>
+        Solo dos apps reciben tráfico de internet. El navegador habla siempre con su propio origen y
+        Caddy o Next reenvían <code>/api/auth</code> y <code>/trpc</code> al server, así que la
+        cookie de sesión sigue siendo first-party, igual que en el compose actual. Postgres y Redis
+        no tienen IP pública. El server encola en Redis y el worker consume desde ahí y actualiza el
+        estado en Postgres.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Cómo llega una versión</h2>
+    <figure>
+      <div class="scroll">
+        <svg
+          viewBox="0 0 1140 120"
+          role="img"
+          aria-label="Pipeline de release, en cada push a la rama QA: GitHub Actions construye 5 imágenes, las publica en GHCR con el tag del commit, ejecuta el job de migración y, si termina bien, actualiza server y worker y después admin y web."
+        >
+          <defs>
+            <marker
+              id="ah2"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto"
+            >
+              <path class="ah" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+          </defs>
+          <g class="n">
+            <rect x="20" y="24" width="180" height="70" rx="6" />
+            <text class="step-n" x="34" y="66">1</text>
+            <text class="t" x="58" y="54">Push a QA</text>
+            <text class="s" x="58" y="72">Actions · 5 imágenes</text>
+          </g>
+          <g class="n">
+            <rect x="250" y="24" width="180" height="70" rx="6" />
+            <text class="step-n" x="264" y="66">2</text>
+            <text class="t" x="288" y="54">Publicar</text>
+            <text class="s" x="288" y="72">GHCR · tag :sha</text>
+          </g>
+          <g class="n job">
+            <rect x="480" y="24" width="180" height="70" rx="6" />
+            <text class="step-n" x="494" y="66">3</text>
+            <text class="t" x="518" y="54">Migrar</text>
+            <text class="s" x="518" y="72">caj-farm-migrate</text>
+          </g>
+          <g class="n">
+            <rect x="710" y="24" width="180" height="70" rx="6" />
+            <text class="step-n" x="724" y="66">4</text>
+            <text class="t" x="748" y="54">API</text>
+            <text class="s" x="748" y="72">server + worker</text>
+          </g>
+          <g class="n pub">
+            <rect x="940" y="24" width="180" height="70" rx="6" />
+            <text class="step-n" x="954" y="66">5</text>
+            <text class="t" x="978" y="54">Frontends</text>
+            <text class="s" x="978" y="72">admin + web</text>
+          </g>
+          <line class="e" x1="200" y1="59" x2="248" y2="59" marker-end="url(#ah2)" />
+          <text class="l" x="224" y="50" text-anchor="middle">build</text>
+          <line class="e" x1="430" y1="59" x2="478" y2="59" marker-end="url(#ah2)" />
+          <text class="l" x="454" y="50" text-anchor="middle">OIDC</text>
+          <line class="e" x1="660" y1="59" x2="708" y2="59" marker-end="url(#ah2)" />
+          <text class="l" x="684" y="50" text-anchor="middle">exit 0</text>
+          <line class="e" x1="890" y1="59" x2="938" y2="59" marker-end="url(#ah2)" />
+          <text class="l" x="914" y="50" text-anchor="middle">/ready</text>
+        </svg>
+      </div>
+      <figcaption>
+        El workflow se ejecuta solo con push a <code>QA</code>. Sigue el orden de
+        <code>docs/DEPLOYMENT.md</code>: las apps nunca migran al iniciar. GitHub entra a Azure con
+        una credencial federada (OIDC) limitada a rg-farmacia-bm y a la rama QA, sin secretos de
+        larga duración. Si la migración falla, el pipeline se detiene antes de tocar las apps.
+      </figcaption>
+    </figure>
+  </section>
+
+  <div class="cols">
+    <section>
+      <h2>Costo mensual estimado</h2>
+      <div class="tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>Recurso</th>
+              <th class="num">US$/mes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                PostgreSQL Flexible<small
+                  >Burstable B1ms, 32 GB, backups de 7 días incluidos, sin HA</small
+                >
+              </td>
+              <td class="num">~16</td>
+            </tr>
+            <tr>
+              <td>
+                Azure Managed Redis<small
+                  >B0 (1 GB). Reemplaza a Azure Cache for Redis, que ya no permite crear cachés
+                  nuevas</small
+                >
+              </td>
+              <td class="num">~13</td>
+            </tr>
+            <tr>
+              <td>
+                Private endpoint + 2 zonas DNS privadas<small
+                  >Para Redis. Postgres usa una subred delegada, sin costo extra</small
+                >
+              </td>
+              <td class="num">~8</td>
+            </tr>
+            <tr>
+              <td>
+                Container Apps<small
+                  >Worker siempre encendido (0.25 vCPU / 0.5 GiB). Server, admin y web escalan a
+                  cero. Incluye el tramo gratis mensual</small
+                >
+              </td>
+              <td class="num">6–18</td>
+            </tr>
+            <tr>
+              <td>Log Analytics<small>Con tope diario de 0.2 GB</small></td>
+              <td class="num">0–3</td>
+            </tr>
+            <tr>
+              <td>
+                Key Vault, ACS Email, VNet, identidad<small
+                  >Cobro por uso, casi nada en una demo</small
+                >
+              </td>
+              <td class="num">&lt; 1</td>
+            </tr>
+            <tr>
+              <td>GHCR + GitHub Actions</td>
+              <td class="num">0</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>Total modo ahorro</td>
+              <td class="num">≈ 50–60</td>
+            </tr>
+            <tr class="alt">
+              <td>Modo demo (server, admin y web con 1 réplica mínima, sin arranques en frío)</td>
+              <td class="num">≈ 70–85</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="note">
+        Precios de lista aproximados de East US 2, a confirmar en la calculadora de Azure (en
+        especial Redis B0). Un presupuesto de Cost Management sobre el RG avisa a los dueños de la
+        suscripción al 50, 80 y 100 % de US$ 80.
+      </p>
+    </section>
+
+    <section>
+      <h2>Decisiones</h2>
+      <dl class="dl">
+        <div>
+          <dt>Container Apps para los cuatro servicios</dt>
+          <dd>
+            Corre las mismas imágenes del compose. Tiene ingress interno para que el server no quede
+            expuesto, Jobs para las migraciones y escalado a cero en lo que no necesita estar
+            encendido.
+          </dd>
+        </div>
+        <div>
+          <dt>mobile-web sigue siendo un contenedor con Caddy</dt>
+          <dd>
+            Mantiene el proxy al mismo origen, del que depende la cookie de sesión de Better Auth.
+          </dd>
+        </div>
+        <div>
+          <dt>Red privada para los datos</dt>
+          <dd>
+            Postgres en subred delegada y Redis por endpoint privado. Cuesta ~US$ 8 al mes y evita
+            abrir los firewalls a "cualquier servicio de Azure".
+          </dd>
+        </div>
+        <div>
+          <dt>Secretos en Key Vault con identidad gestionada</dt>
+          <dd>
+            Las apps leen DATABASE_URL, REDIS_URL, BETTER_AUTH_SECRET y SMTP_URL como referencias a
+            Key Vault. Ningún secreto queda en el workflow.
+          </dd>
+        </div>
+        <div class="no">
+          <dt>Static Web Apps para mobile-web</dt>
+          <dd>
+            El plan Free no puede reenviar a un backend, y el cruce de origen rompe las cookies
+            SameSite=Lax. El backend enlazado exige Standard (US$ 9).
+          </dd>
+        </div>
+        <div class="no">
+          <dt>App Service B1</dt>
+          <dd>
+            Sale ~US$ 13 fijos y sin arranques en frío, pero el server quedaría público y no hay
+            Jobs para migrar.
+          </dd>
+        </div>
+        <div class="no">
+          <dt>Azure Functions</dt>
+          <dd>
+            No sirve para un worker de BullMQ que corre de forma permanente ni para un servidor
+            Fastify.
+          </dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>Cambios antes de desplegar</h2>
+      <ol class="todo">
+        <li>
+          <b>Caddyfile: reescribir el Host hacia el server</b>
+          <p>
+            El ingress de Container Apps enruta por Host. Si Caddy conserva el Host público, la
+            petición vuelve a ca-farm-web. Hay que agregar
+            <code>header_up Host {upstream_hostport}</code> (X-Forwarded-Host sigue llegando).
+          </p>
+        </li>
+        <li>
+          <b>Build del admin con <code>API_INTERNAL_URL=http://ca-farm-server</code></b>
+          <p>Queda fijo en el build, así que el workflow lo pasa como build arg.</p>
+        </li>
+        <li>
+          <b>URLs de conexión gestionadas</b>
+          <p>
+            <code>DATABASE_URL</code> con <code>sslmode=require</code> y
+            <code>REDIS_URL=rediss://…:10000</code>. Hay que confirmar que BullMQ funciona en
+            Managed Redis sin modo cluster.
+          </p>
+        </li>
+        <li>
+          <b>Auth y orígenes</b>
+          <p>
+            <code>BETTER_AUTH_URL</code> = URL de web. <code>TRUSTED_ORIGINS</code> = web, admin y
+            <code>bnp://</code>. <code>TRUST_PROXY_ADDRESSES</code> se mantiene, porque los proxies
+            de Azure usan IPs privadas de la VNet. Después del despliegue hay que verificar que el
+            rate limiting vea la IP real del cliente.
+          </p>
+        </li>
+        <li>
+          <b>Email con ACS</b>
+          <p>
+            El usuario SMTP requiere un registro de aplicación en Entra ID.
+            <code>EMAIL_FROM</code> queda como <code>DoNotReply@&lt;id&gt;.azurecomm.net</code>.
+          </p>
+        </li>
+        <li>
+          <b>Infra y pipeline nuevos en el repo</b>
+          <p>
+            <code>infra/main.bicep</code> con sus módulos, <code>infra/main.bicepparam</code> y
+            <code>.github/workflows/deploy-qa.yml</code>, que se dispara solo con push a
+            <code>QA</code>. Más un job opcional de seed con datos sintéticos.
+          </p>
+        </li>
+        <li>
+          <b>Registrar <code>Microsoft.Cache</code> en la suscripción</b>
+          <p>
+            El proveedor de Managed Redis no está registrado todavía en la suscripción de destino.
+          </p>
+        </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Riesgos y puntos abiertos</h2>
+      <ul class="risk">
+        <li>
+          <b>Arranque en frío</b>
+          <p>
+            Con escalado a cero, la primera visita tarda ~5–15 s. Para presentar al PO se activa el
+            modo demo con un parámetro y después se apaga.
+          </p>
+        </li>
+        <li>
+          <b>Redis B0 es un SKU nuevo</b>
+          <p>
+            Admite <code>NoCluster</code> y <code>NoEviction</code>, que es lo que necesita BullMQ.
+            El precio final está por confirmar. El plan B es Redis en un contenedor de ACA con
+            disco, sin SLA, por ~US$ 3.
+          </p>
+        </li>
+        <li>
+          <b>Imágenes privadas en GHCR</b>
+          <p>
+            Si el repo es privado, Container Apps necesita un token con
+            <code>read:packages</code> guardado en Key Vault. Si los paquetes son públicos, no hace
+            falta.
+          </p>
+        </li>
+        <li>
+          <b>Conexiones de Postgres</b>
+          <p>B1ms permite ~50 conexiones. Los pools de server y worker deben sumar menos de 20.</p>
+        </li>
+        <li>
+          <b>Ubicación del resource group</b>
+          <p>
+            rg-farmacia-bm está en East US y los recursos van en East US 2. Funciona, pero los
+            metadatos del RG quedan en otra región.
+          </p>
+        </li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="next">
+    <h2>Ambientes y ramas</h2>
+    <p>
+      <code>DEV</code> integra el trabajo del equipo y solo corre CI. <code>QA</code> despliega este
+      ambiente de pre-producción en Azure, donde el PO valida cada entrega. <code>main</code> queda
+      reservada para producción, que tendrá su propio resource group y se desplegará con los mismos
+      módulos Bicep y otros parámetros. Los cambios avanzan DEV → QA → main.
+    </p>
+  </section>
+</div>

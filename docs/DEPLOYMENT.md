@@ -2,6 +2,8 @@
 
 Guía para construir y operar las imágenes Docker de producción (server, worker, admin, mobile-web y el job de migraciones) y para publicar la app en iOS/Android con EAS. La arquitectura general está en [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+El ambiente de pre-producción en Azure (rama `QA`) está descrito en [`azure/README.md`](./azure/README.md). `main` queda reservada para producción.
+
 ## Imágenes
 
 Todas se construyen **desde la raíz del repo** (el contexto debe contener el monorepo completo; [`.dockerignore`](../.dockerignore) excluye `node_modules`, builds, `.env`, `apps/storybook`, `apps/e2e` y los proyectos nativos de `apps/mobile`).
