@@ -53,7 +53,9 @@ flowchart LR
 
 ## Recursos
 
-Región **East US 2**. El resource group `rg-farmacia-bm` ya existe (su metadata está en East US).
+Región **Central US** para la red, PostgreSQL, Redis y Container Apps. Key Vault, la identidad y Log Analytics quedaron en East US 2 (funcionan entre regiones). El resource group `rg-farmacia-bm` ya existía (su metadata está en East US).
+
+El plan original era East US 2, pero esta suscripción no permite PostgreSQL Burstable ahí (`SkuNotAvailable` en todas las zonas y también con B2s) y East US está restringida. Se probó B1ms en otras regiones y está disponible en Central US, South Central US, North Central US, West US 2 y Canada Central. Se eligió Central US por precio similar a East US 2.
 
 | Recurso                   | Nombre                               | SKU / configuración                                                  |
 | ------------------------- | ------------------------------------ | -------------------------------------------------------------------- |
@@ -90,7 +92,7 @@ Azure Cache for Redis está en retiro y ya no permite crear cachés nuevas, por 
 | **Total en modo ahorro**                      | **≈ 50–60** |
 | Modo demo (server, admin y web con 1 réplica) |     ≈ 70–85 |
 
-Precios de lista aproximados de East US 2, a confirmar en la calculadora de Azure. El tope acordado es US$ 100/mes.
+Precios de lista aproximados de Central US, a confirmar en la calculadora de Azure. El tope acordado es US$ 100/mes.
 
 ## Flujo de release
 
