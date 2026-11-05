@@ -37,3 +37,17 @@ export function exceedsAvailability(
 ): boolean {
   return line.quantity > maxLineQuantity(line.availableQty);
 }
+
+/**
+ * Warning for a line that exceeds what is on hand now (RNF-09: what happened and how to
+ * continue). With no stock left the quantity cannot go below 1, so only removing the product
+ * fixes the line. Pure.
+ */
+export function availabilityWarning(availableQty: number): string {
+  const max = maxLineQuantity(availableQty);
+  if (max === 0) return "Este producto se agotó. Quítalo de tu pedido para continuar.";
+  if (max === 1) {
+    return "Ahora solo queda 1 unidad disponible. Baja la cantidad a 1 o quita el producto.";
+  }
+  return `Ahora solo hay ${String(max)} unidades disponibles. Baja la cantidad o quita el producto.`;
+}

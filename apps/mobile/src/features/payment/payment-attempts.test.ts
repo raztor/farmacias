@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createPaymentAttemptStore } from "./payment-attempts";
+import { createPaymentAttemptStore, pendingAttemptHint } from "./payment-attempts";
 
 function storeWithCounter() {
   let next = 0;
@@ -52,5 +52,22 @@ describe("payment attempts (idempotency keys, HU-05 #3)", () => {
 
     expect(two).not.toBe(one);
     expect(store.keyFor("order-1", "approve")).toBe(one);
+  });
+});
+
+describe("pendingAttemptHint (D-12)", () => {
+  it("says nothing when no attempt is waiting", () => {
+    expect(pendingAttemptHint(undefined)).toBeNull();
+  });
+
+  it("reminds which scenario is unresolved and that repeating it is safe", () => {
+    const store = storeWithCounter();
+    store.keyFor("order-1", "approve");
+
+    const hint = pendingAttemptHint(store.pending("order-1"));
+
+    expect(hint).toContain("«pago aprobado» sin confirmar");
+    expect(hint).toContain("no se pagará ni se descontará dos veces");
+    expect(pendingAttemptHint({ scenario: "reject", key: "k" })).toContain("«pago rechazado»");
   });
 });

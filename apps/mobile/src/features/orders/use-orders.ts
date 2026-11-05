@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { reportUnexpectedApiError } from "../../lib/report-error";
 import { useTRPC } from "../../lib/trpc";
+import { cancelOrderOptions } from "./order-mutations";
 
 export const MY_ORDERS_PAGE_SIZE = 20;
 
@@ -22,17 +23,9 @@ export function useOrderDetail(id: string) {
   return useQuery(trpc.orders.detail.queryOptions({ id }));
 }
 
-/** Owner cancellation; refreshes the orders and the catalog (a paid order restores stock). */
+/** Owner cancellation; refreshes the orders and the catalog after any answer (see options). */
 export function useCancelOrder() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  return useMutation(
-    trpc.orders.cancel.mutationOptions({
-      onSuccess: () => {
-        void queryClient.invalidateQueries(trpc.orders.pathFilter());
-        void queryClient.invalidateQueries(trpc.catalog.pathFilter());
-      },
-      onError: reportUnexpectedApiError,
-    }),
-  );
+  return useMutation(cancelOrderOptions({ trpc, queryClient, onError: reportUnexpectedApiError }));
 }

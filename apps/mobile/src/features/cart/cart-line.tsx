@@ -4,8 +4,8 @@ import { View } from "react-native";
 
 import { FormError } from "../../components/form-error";
 import { getApiErrorMessage } from "../../lib/error-message";
-import { formatClp, formatUnits } from "../../lib/format";
-import { exceedsAvailability, maxLineQuantity } from "./cart-limits";
+import { formatClp } from "../../lib/format";
+import { availabilityWarning, exceedsAvailability, maxLineQuantity } from "./cart-limits";
 import { useRemoveItem, useSetQuantity } from "./use-draft";
 
 type CartLineProps = Readonly<{ line: OrderDraftLine }>;
@@ -37,7 +37,7 @@ export function CartLine({ line }: CartLineProps) {
         />
         {exceedsAvailability(line) ? (
           <Text role="alert" className="text-warning dark:text-warning-dark">
-            {`! Ahora solo hay ${formatUnits(maxLineQuantity(line.availableQty))} disponibles. Baja la cantidad o quita el producto.`}
+            {`! ${availabilityWarning(line.availableQty)}`}
           </Text>
         ) : null}
         <FormError message={error === null ? null : getApiErrorMessage(error)} />

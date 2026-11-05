@@ -1,13 +1,10 @@
-import type { RouterOutputs } from "@repo/api";
-import { ROLE_LABELS } from "@repo/shared";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Text } from "@repo/ui";
 import { Link } from "expo-router";
 import { View } from "react-native";
 
 import { ErrorState, LoadingState } from "../../components/query-state";
+import { type Profile, profileFacts } from "./profile-facts";
 import { useMe } from "./use-profile";
-
-type Profile = RouterOutputs["user"]["me"];
 
 function ProfileDetails({ profile }: Readonly<{ profile: Profile }>) {
   return (
@@ -17,14 +14,12 @@ function ProfileDetails({ profile }: Readonly<{ profile: Profile }>) {
         <CardDescription testID="profile-email">{profile.email}</CardDescription>
       </CardHeader>
       <CardContent>
-        <View className="flex-row justify-between">
-          <Text variant="muted">Rol</Text>
-          <Text>{ROLE_LABELS[profile.role]}</Text>
-        </View>
-        <View className="flex-row justify-between">
-          <Text variant="muted">Miembro desde</Text>
-          <Text>{profile.createdAt.toLocaleDateString("es-CL")}</Text>
-        </View>
+        {profileFacts(profile).map((fact) => (
+          <View key={fact.label} className="flex-row justify-between">
+            <Text variant="muted">{fact.label}</Text>
+            <Text>{fact.value}</Text>
+          </View>
+        ))}
         <Link href="/profile" asChild>
           <Button variant="secondary" testID="edit-profile">
             Editar perfil

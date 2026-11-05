@@ -1,7 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
-import { createQueryClient } from "../lib/query-client";
+import { createQueryClient, watchSessionUser } from "../lib/query-client";
 import { setupReactQueryNative } from "../lib/react-query-native";
 import { TRPCProvider, createTrpcClient } from "../lib/trpc";
 
@@ -13,6 +13,7 @@ type AppProvidersProps = Readonly<{ children: ReactNode }>;
 export function AppProviders({ children }: AppProvidersProps) {
   const [queryClient] = useState(createQueryClient);
   const [trpcClient] = useState(createTrpcClient);
+  useEffect(() => watchSessionUser(queryClient), [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>

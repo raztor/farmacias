@@ -11,11 +11,20 @@ import {
   type PaymentOutcome,
 } from "./payment-outcome";
 
+export type PaymentController = Readonly<{
+  pay: (scenario: PaymentScenario) => void;
+  retry: () => void;
+  startOver: () => void;
+  outcome: PaymentOutcome | null;
+  scenario: PaymentScenario | null;
+  isPending: boolean;
+}>;
+
 /**
  * Simulated payment of an order (HU-05). Each attempt sends an idempotency key: a retry after an
  * unknown outcome reuses it (no double charge or discount), a new attempt gets a new one.
  */
-export function usePayment(orderId: string) {
+export function usePayment(orderId: string): PaymentController {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);

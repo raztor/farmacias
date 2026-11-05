@@ -41,3 +41,21 @@ export function createPaymentAttemptStore(newKey: () => string): PaymentAttemptS
  * attempt still sends the same key.
  */
 export const paymentAttempts = createPaymentAttemptStore(() => createUuidV4());
+
+const SCENARIO_LABELS: Readonly<Record<PaymentScenario, string>> = {
+  approve: "pago aprobado",
+  reject: "pago rechazado",
+};
+
+/**
+ * Reminder of an attempt whose outcome is still unknown (e.g. after leaving the payment screen),
+ * so the resident knows repeating that scenario is a safe retry (HU-05 #3, D-12). Pure.
+ */
+export function pendingAttemptHint(pending: PendingAttempt | undefined): string | null {
+  if (pending === undefined) return null;
+  return (
+    `Tienes un intento de «${SCENARIO_LABELS[pending.scenario]}» sin confirmar. Si eliges ` +
+    "el mismo resultado lo reintentamos de forma segura: tu pedido no se pagará ni se " +
+    "descontará dos veces."
+  );
+}

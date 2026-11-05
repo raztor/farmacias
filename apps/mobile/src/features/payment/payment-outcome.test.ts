@@ -94,6 +94,27 @@ describe("outcomeFromError", () => {
   });
 });
 
+describe("UNKNOWN_OUTCOME_MESSAGE (RNF-09)", () => {
+  it("does not blame the connection for timeouts, rate limits or server errors", () => {
+    const errors = [
+      TRPCClientError.from(new TypeError("Network request failed")),
+      apiError("x", { code: "TIMEOUT", httpStatus: 408 }),
+      apiError("x", { code: "TOO_MANY_REQUESTS", httpStatus: 429 }),
+      apiError("x", { code: "INTERNAL_SERVER_ERROR", httpStatus: 500 }),
+    ];
+
+    for (const error of errors) {
+      expect(outcomeFromError(error)).toEqual({
+        kind: "unknown",
+        message: UNKNOWN_OUTCOME_MESSAGE,
+      });
+    }
+    expect(UNKNOWN_OUTCOME_MESSAGE).not.toMatch(/conexi[oó]n/iu);
+    expect(UNKNOWN_OUTCOME_MESSAGE).toMatch(/Espera un momento y usa «Reintentar»/u);
+    expect(UNKNOWN_OUTCOME_MESSAGE).toMatch(/dos veces/u);
+  });
+});
+
 describe("keepsAttemptKey", () => {
   it("keeps the key only while the outcome is unknown", () => {
     expect(keepsAttemptKey({ kind: "unknown", message: "" })).toBe(true);

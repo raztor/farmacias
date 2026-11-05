@@ -5,11 +5,12 @@ import { View } from "react-native";
 
 import { AppScreen } from "../../components/app-screen";
 import { ErrorState, LoadingState } from "../../components/query-state";
+import { cachedQueryState } from "../../lib/cached-query-state";
 import { RequireSignIn } from "../auth";
 import { canPay, useOrderDetail } from "../orders";
 import { PaymentPanel } from "./payment-panel";
 import { PaymentResult } from "./payment-result";
-import { usePayment } from "./use-payment";
+import { type PaymentController, usePayment } from "./use-payment";
 
 function NotPayable({ order }: Readonly<{ order: MyOrderDetail }>) {
   return (
@@ -22,9 +23,9 @@ function NotPayable({ order }: Readonly<{ order: MyOrderDetail }>) {
   );
 }
 
-function PaymentFlow({ order }: Readonly<{ order: MyOrderDetail }>) {
-  const payment = usePayment(order.id);
+type PaymentFlowProps = Readonly<{ order: MyOrderDetail; payment: PaymentController }>;
 
+function PaymentFlow({ order, payment }: PaymentFlowProps) {
   if (payment.outcome !== null) {
     return (
       <PaymentResult
@@ -46,20 +47,36 @@ function PaymentFlow({ order }: Readonly<{ order: MyOrderDetail }>) {
   );
 }
 
+/** The order could not be refreshed: keep what is on screen and offer to try again. */
+function StaleOrderNotice({ onRefresh }: Readonly<{ onRefresh: () => void }>) {
+  return (
+    <Notice tone="warning" title="No pudimos actualizar el pedido" testID="payment-order-stale">
+      <Text>Lo que ves puede no estar al día. Puedes volver a cargarlo cuando quieras.</Text>
+      <Button variant="outline" size="sm" onPress={onRefresh} testID="payment-order-refresh">
+        Actualizar pedido
+      </Button>
+    </Notice>
+  );
+}
+
 function PaymentBody({ orderId }: Readonly<{ orderId: string }>) {
   const order = useOrderDetail(orderId);
-  if (order.isPending) return <LoadingState />;
-  if (order.isError) {
-    return (
-      <ErrorState
-        error={order.error}
-        onRetry={() => {
-          void order.refetch();
-        }}
-      />
-    );
-  }
-  return <PaymentFlow order={order.data} />;
+  // Above the query guard: a failed order refetch (e.g. the server is unreachable right after an
+  // unknown outcome) must never unmount the payment result and its safe «Reintentar» (D-12).
+  const payment = usePayment(orderId);
+  const state = cachedQueryState(order);
+  const refetch = () => {
+    void order.refetch();
+  };
+
+  if (state.kind === "loading") return <LoadingState />;
+  if (state.kind === "error") return <ErrorState error={state.error} onRetry={refetch} />;
+  return (
+    <View className="gap-4">
+      {state.stale ? <StaleOrderNotice onRefresh={refetch} /> : null}
+      <PaymentFlow order={state.data} payment={payment} />
+    </View>
+  );
 }
 
 /** «Pago simulado» (HU-05): explicit approve/reject simulation and its result. */

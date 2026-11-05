@@ -21,8 +21,12 @@ export type PaymentOutcome =
   /** No answer (network, server error): retry with the same idempotency key. */
   | Readonly<{ kind: "unknown"; message: string }>;
 
+/**
+ * Shown for every unknown outcome (no answer, timeout, rate limit, server error), so it names no
+ * cause: the connection may have worked (RNF-09). Waiting a moment also suits a 429.
+ */
 export const UNKNOWN_OUTCOME_MESSAGE =
-  "No pudimos confirmar el resultado del pago porque falló la conexión. Usa «Reintentar»: es " +
+  "No pudimos confirmar el resultado del pago. Espera un momento y usa «Reintentar»: es " +
   "seguro, tu pedido no se pagará ni se descontará dos veces.";
 
 /** Successful answer of `payments.pay` (approved or rejected, possibly a replay). Pure. */

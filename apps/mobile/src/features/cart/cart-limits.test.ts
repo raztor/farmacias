@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { addToOrderState, exceedsAvailability, maxAddable, maxLineQuantity } from "./cart-limits";
+import {
+  addToOrderState,
+  availabilityWarning,
+  exceedsAvailability,
+  maxAddable,
+  maxLineQuantity,
+} from "./cart-limits";
 
 describe("maxLineQuantity", () => {
   it("is the stock on hand, capped at 99 units per line", () => {
@@ -61,5 +67,29 @@ describe("exceedsAvailability", () => {
     expect(exceedsAvailability({ quantity: 3, availableQty: 2 })).toBe(true);
     expect(exceedsAvailability({ quantity: 2, availableQty: 2 })).toBe(false);
     expect(exceedsAvailability({ quantity: 99, availableQty: 500 })).toBe(false);
+  });
+});
+
+describe("availabilityWarning (RNF-09)", () => {
+  it("asks to remove a sold-out product instead of lowering a quantity that cannot reach 0", () => {
+    expect(availabilityWarning(0)).toBe(
+      "Este producto se agotó. Quítalo de tu pedido para continuar.",
+    );
+    expect(availabilityWarning(-2)).toBe(
+      "Este producto se agotó. Quítalo de tu pedido para continuar.",
+    );
+  });
+
+  it("uses the singular when one unit is left", () => {
+    expect(availabilityWarning(1)).toBe(
+      "Ahora solo queda 1 unidad disponible. Baja la cantidad a 1 o quita el producto.",
+    );
+  });
+
+  it("states the plural maximum, capped at 99 per line", () => {
+    expect(availabilityWarning(3)).toBe(
+      "Ahora solo hay 3 unidades disponibles. Baja la cantidad o quita el producto.",
+    );
+    expect(availabilityWarning(250)).toContain("solo hay 99 unidades disponibles");
   });
 });

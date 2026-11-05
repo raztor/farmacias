@@ -4,7 +4,7 @@ import { View } from "react-native";
 
 import { formatClp } from "../../lib/format";
 import { OrderStatusBadge } from "../orders";
-import type { PaymentScenario } from "./payment-attempts";
+import { type PaymentScenario, paymentAttempts, pendingAttemptHint } from "./payment-attempts";
 
 type PaymentPanelProps = Readonly<{
   order: MyOrderDetail;
@@ -15,6 +15,7 @@ type PaymentPanelProps = Readonly<{
 
 /** Order summary and the two explicit simulation buttons (HU-05). */
 export function PaymentPanel({ order, pendingScenario, isPending, onPay }: PaymentPanelProps) {
+  const pendingHint = isPending ? null : pendingAttemptHint(paymentAttempts.pending(order.id));
   return (
     <View className="gap-5">
       <Card>
@@ -31,6 +32,11 @@ export function PaymentPanel({ order, pendingScenario, isPending, onPay }: Payme
           <Text>Puedes intentarlo de nuevo. El inventario no cambió.</Text>
         </Notice>
       ) : null}
+      {pendingHint === null ? null : (
+        <Notice tone="warning" title="Hay un pago sin confirmar" testID="payment-pending-attempt">
+          <Text>{pendingHint}</Text>
+        </Notice>
+      )}
       <Text>
         Esto es una simulación: no se cobra dinero real. Elige qué resultado quieres simular.
       </Text>
