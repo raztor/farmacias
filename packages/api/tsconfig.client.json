@@ -1,0 +1,9 @@
+{
+  "extends": "@repo/tsconfig/react-library.json",
+  "display": "Verifies that the AppRouter type graph compiles for DOM / React Native consumers (no Node globals)",
+  "compilerOptions": {
+    "types": [],
+    "tsBuildInfoFile": "${configDir}/node_modules/.cache/tsbuildinfo.client.json"
+  },
+  "files": ["src/index.ts"]
+}

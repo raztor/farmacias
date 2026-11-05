@@ -1,0 +1,140 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", ":timezone(America/Santiago)"],
+  "description": "Política de actualizaciones (docs/REPO_RULES.md §4 y §10). Las versiones viven en el catálogo de pnpm-workspace.yaml.",
+  "schedule": ["* 0-5 * * 1"],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "labels": ["deps"],
+  "prConcurrentLimit": 10,
+  "rangeStrategy": "auto",
+  "postUpdateOptions": ["pnpmDedupe"],
+  "dependencyDashboard": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["* 0-5 * * 1"]
+  },
+  "packageRules": [
+    {
+      "description": "Grupo Expo SDK: Expo fija las versiones de React y React Native; se actualizan juntos.",
+      "groupName": "Expo SDK",
+      "matchPackageNames": [
+        "expo",
+        "expo-*",
+        "@expo/*",
+        "babel-preset-expo",
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom",
+        "react-native",
+        "react-native-*",
+        "@sentry/react-native",
+        "nativewind"
+      ]
+    },
+    {
+      "description": "Un cambio de SDK de Expo (mayor) se hace a mano con `expo install --fix` y requiere aprobación.",
+      "matchPackageNames": ["expo", "expo-*", "@expo/*", "react", "react-native"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Grupo Next.js (framework y plugin de ESLint deben coincidir).",
+      "groupName": "Next.js",
+      "matchPackageNames": ["next", "@next/*"]
+    },
+    {
+      "description": "Grupo OpenTelemetry (los paquetes se publican en conjunto).",
+      "groupName": "OpenTelemetry",
+      "matchPackageNames": ["@opentelemetry/*"]
+    },
+    {
+      "description": "Grupo Storybook (core, addons y framework deben tener la misma versión).",
+      "groupName": "Storybook",
+      "matchPackageNames": ["storybook", "@storybook/*"]
+    },
+    {
+      "description": "Grupo Sentry (servidor y web).",
+      "groupName": "Sentry",
+      "matchPackageNames": ["@sentry/node", "@sentry/nextjs"]
+    },
+    {
+      "description": "Grupo Prisma (CLI, cliente y adapter deben coincidir).",
+      "groupName": "Prisma",
+      "matchPackageNames": ["prisma", "@prisma/*"]
+    },
+    {
+      "description": "Grupo tRPC.",
+      "groupName": "tRPC",
+      "matchPackageNames": ["@trpc/*"]
+    },
+    {
+      "description": "Grupo Better Auth.",
+      "groupName": "Better Auth",
+      "matchPackageNames": ["better-auth", "@better-auth/*"]
+    },
+    {
+      "description": "Grupo Vitest.",
+      "groupName": "Vitest",
+      "matchPackageNames": ["vitest", "@vitest/*"]
+    },
+    {
+      "description": "ADR 0001: TypeScript se mantiene en 6.0 mientras typescript-eslint exija <6.1.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1.0"
+    },
+    {
+      "description": "ADR 0001: NativeWind 4 requiere Tailwind CSS 3.",
+      "matchPackageNames": ["tailwindcss"],
+      "allowedVersions": "<4.0.0"
+    },
+    {
+      "description": "Las versiones mayores de Node.js (.nvmrc, Docker) se planifican y requieren aprobación.",
+      "matchPackageNames": ["node"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Automerge de minor/patch solo para devDependencies declaradas en package.json.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge de minor/patch para herramientas de desarrollo del catálogo de pnpm (el catálogo no distingue dependencies de devDependencies).",
+      "matchDepTypes": ["pnpm.catalog.default"],
+      "matchPackageNames": [
+        "@types/node",
+        "eslint",
+        "@eslint/*",
+        "@eslint-react/*",
+        "typescript-eslint",
+        "eslint-plugin-*",
+        "eslint-config-*",
+        "prettier",
+        "dependency-cruiser",
+        "vitest",
+        "@vitest/*",
+        "@playwright/test",
+        "turbo",
+        "husky",
+        "lint-staged",
+        "@commitlint/*",
+        "@changesets/cli",
+        "tsup",
+        "tsx",
+        "globals"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Las GitHub Actions se fijan a versión mayor (docs/REPO_RULES.md); se agrupan sus actualizaciones.",
+      "groupName": "GitHub Actions",
+      "matchManagers": ["github-actions"]
+    }
+  ]
+}

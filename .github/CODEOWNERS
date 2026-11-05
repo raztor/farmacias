@@ -1,0 +1,33 @@
+# Dueños de código: GitHub pide revisión a estos equipos según la ruta modificada.
+# La última regla que coincide gana. Docs: https://docs.github.com/articles/about-code-owners
+#
+# Repositorio: https://github.com/raztor/farmacias (equipo Better Name Pending). Agrega aquí a
+# los integrantes que deben revisar cada área antes de activar "Require review from Code Owners"
+# en la protección de la rama main.
+
+*                         @raztor
+
+# Backend
+/apps/server/             @raztor
+/apps/worker/             @raztor
+/packages/api/            @raztor
+/packages/auth/           @raztor
+/packages/db/             @raztor
+/packages/queue/          @raztor
+/packages/observability/  @raztor
+
+# Frontend y mobile
+/apps/admin/              @raztor
+/apps/mobile/             @raztor
+/apps/storybook/          @raztor
+/apps/e2e/                @raztor
+/packages/ui/             @raztor
+/packages/tailwind-config/ @raztor
+
+# Reglas del repo: cambios aquí requieren un ADR (docs/REPO_RULES.md §11)
+/tooling/                 @raztor
+/.dependency-cruiser.cjs  @raztor
+/pnpm-workspace.yaml      @raztor
+/turbo.json               @raztor
+/.github/                 @raztor
+/docs/adr/                @raztor

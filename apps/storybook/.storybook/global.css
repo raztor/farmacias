@@ -1,0 +1,18 @@
+/*
+ * Tailwind entry point for Storybook. On the web NativeWind 4 renders regular CSS classes, so
+ * the utilities used by @repo/ui are generated here from the shared preset.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Canvas follows the active theme (the `dark` class is toggled on <html> by NativeWind). */
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  .dark body {
+    @apply bg-background-dark text-foreground-dark;
+  }
+}

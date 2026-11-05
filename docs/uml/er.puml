@@ -1,0 +1,137 @@
+@startuml er
+' Modelo entidad-relación del dominio (T-01 #24). Specs: docs/specs/README.md y cada módulo.
+' Tablas en snake_case; valores cerrados como texto con CHECK (sin enums).
+' Todas las fechas son timestamptz, también las de Better Auth (migración 20261104120000_auth_timestamptz).
+' Un pedido puede no tener líneas: el borrador empieza vacío y un borrador vacío se puede cancelar.
+title Modelo de datos — MVP Farmacia Comunitaria Peñalolén
+hide circle
+skinparam linetype ortho
+
+entity "user (Better Auth)" as user {
+  * id : text <<PK>>
+  --
+  * email : text <<UK>>
+  * name : text
+  * role : text [resident | operator | admin]
+  * banned : boolean
+  created_at : timestamptz
+}
+
+entity "products" as products {
+  * id : text <<PK>>
+  --
+  * sku : text <<UK>>
+  * commercial_name : text
+  * active_ingredient : text
+  * presentation : text
+  * category : text [CHECK lista cerrada]
+  * price_clp : int [CHECK > 0]
+  * active : boolean
+  * search_text : text [normalizado, GIN pg_trgm]
+  created_at / updated_at : timestamptz
+}
+
+entity "inventory_items" as inventory {
+  * product_id : text <<PK, FK>>
+  --
+  * on_hand : int [CHECK on_hand >= 0]
+  * low_stock_threshold : int [default 5]
+  * version : int
+  updated_at : timestamptz
+}
+
+entity "stock_movements" as movements {
+  * id : text <<PK>>
+  --
+  * product_id : text <<FK>>
+  * delta : int [CHECK <> 0]
+  * reason : text [sale | cancellation_restore | receipt | adjustment]
+  order_id : text <<FK>>
+  payment_id : text <<FK>>
+  actor_id : text <<FK>>
+  * quantity_before : int
+  * quantity_after : int
+  note : text
+  created_at : timestamptz
+}
+
+entity "orders" as orders {
+  * id : text <<PK>>
+  --
+  * code : text <<UK>> [P-000123 (secuencia)]
+  * resident_id : text <<FK>>
+  * status : text [CHECK 10 estados]
+  fulfillment : text [pickup | delivery (nulo en draft)]
+  delivery_sector : text
+  delivery_address_reference : text
+  delivery_contact_alias : text
+  delivery_instructions : text
+  * total_clp : int
+  * version : int
+  created_at : timestamptz [instante de confirmación, trigger orders_stamp_placement (R-DAT-11)]
+  updated_at : timestamptz
+  UNIQUE (resident_id) WHERE status = 'draft' [orders_one_draft_per_resident (R-DAT-04)]
+}
+
+entity "order_lines" as lines {
+  * id : text <<PK>>
+  --
+  * order_id : text <<FK>>
+  * product_id : text <<FK>>
+  * quantity : int [CHECK 1..99]
+  * unit_price_clp : int
+  * line_total_clp : int
+  UNIQUE (order_id, product_id)
+}
+
+entity "order_status_events" as events {
+  * id : text <<PK>>
+  --
+  * order_id : text <<FK>>
+  from_status : text [nulo solo en el evento de creación]
+  * to_status : text
+  actor_id : text <<FK>>
+  * actor_role : text [resident | operator | admin | system]
+  note : text
+  created_at : timestamptz
+}
+
+entity "payments" as payments {
+  * id : text <<PK>>
+  --
+  * order_id : text <<FK>>
+  * idempotency_key : text <<UK>>
+  * amount_clp : int
+  * status : text [approved | rejected | stock_conflict]
+  reference : text
+  failure_reason : text
+  created_at : timestamptz
+  UNIQUE (order_id) WHERE status = 'approved' [payments_one_approved_per_order (R-DAT-05)]
+}
+
+entity "audit_logs" as audit {
+  * id : text <<PK>>
+  --
+  actor_id : text <<FK>>
+  * actor_role : text
+  * action : text
+  * entity_type : text
+  * entity_id : text
+  before : jsonb
+  after : jsonb
+  created_at : timestamptz
+}
+
+user ||--o{ orders : realiza
+products ||--|| inventory : stock
+products ||--o{ lines
+orders ||--o{ lines : contiene
+orders ||--o{ events : historial
+orders ||--o{ payments : intentos
+products ||--o{ movements
+orders |o--o{ movements
+payments |o--o{ movements
+user |o--o{ events : actor
+user |o--o{ movements : actor
+user |o--o{ audit : actor
+@enduml

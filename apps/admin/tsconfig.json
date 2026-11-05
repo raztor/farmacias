@@ -1,0 +1,15 @@
+{
+  "extends": "@repo/tsconfig/nextjs.json",
+  "compilerOptions": {
+    "jsxImportSource": "nativewind",
+    "erasableSyntaxOnly": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "nativewind-env.d.ts",
+    "src",
+    "*.config.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ]
+}

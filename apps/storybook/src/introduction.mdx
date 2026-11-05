@@ -1,0 +1,102 @@
+import { ColorItem, ColorPalette, Meta, Typeset } from "@storybook/addon-docs/blocks";
+import { colors, fontSize, radius } from "@repo/tailwind-config/tokens";
+
+<Meta title="Introducción" />
+
+# Sistema de diseño
+
+Este catálogo documenta **`@repo/ui`**, la librería de componentes compartida por la app móvil
+(Expo), la web pública y el backoffice (Next.js). Cada componente se escribe una sola vez con
+React Native y se estiliza con **NativeWind 4** (clases de Tailwind CSS 3.4): en iOS y Android
+las clases se convierten en estilos nativos y en la web se renderizan como CSS a través de
+`react-native-web`, que es exactamente lo que ves en este Storybook.
+
+## Cómo usarlo
+
+- En la barra lateral, la sección **UI** agrupa los componentes. Cada uno tiene una página de
+  **Documentación** generada automáticamente con sus props y ejemplos.
+- El panel **Controls** permite cambiar las props en vivo y el panel **Accessibility** ejecuta
+  axe-core sobre cada historia para detectar problemas de accesibilidad.
+- El selector **Tema** de la barra superior alterna entre modo claro y oscuro (igual que
+  `colorScheme.set()` de NativeWind en las apps).
+
+```tsx
+import { Button, Card, CardContent, Text } from "@repo/ui";
+
+<Card>
+  <CardContent>
+    <Text>Hola</Text>
+    <Button variant="primary">Guardar cambios</Button>
+  </CardContent>
+</Card>;
+```
+
+## Principios
+
+1. **Tokens semánticos, no colores sueltos.** Se usa `bg-primary`, `text-muted-foreground`,
+   nunca `bg-blue-600`. Así un cambio de marca se hace en un solo lugar.
+2. **Modo oscuro explícito.** Cada color tiene una variante `-dark`:
+   `bg-background dark:bg-background-dark`.
+3. **Accesible por defecto.** Los componentes exponen roles y estados (`accessibilityRole`,
+   `aria-*`), respetan un área táctil mínima de 44 px y el foco es visible en la web.
+4. **Mismo resultado en todas las plataformas.** Las medidas tipográficas usan `px` para que la
+   web y el móvil se vean idénticos.
+
+## Tokens
+
+Los tokens viven en `@repo/tailwind-config` (`src/tokens.js`) y el preset de Tailwind los expone
+como clases. Los valores de esta página se leen directamente de ese archivo.
+
+### Colores
+
+Cada token muestra su valor en modo claro (`DEFAULT`) y en modo oscuro (`dark`).
+
+<ColorPalette>
+  {Object.entries(colors).map(([name, value]) => (
+    <ColorItem
+      key={name}
+      title={name}
+      subtitle={`bg-${name} · dark:bg-${name}-dark`}
+      colors={{ Claro: value.DEFAULT, Oscuro: value.dark }}
+    />
+  ))}
+</ColorPalette>
+
+### Tipografía
+
+Escala de tamaños (`text-xs` a `text-4xl`) con su interlineado fijo.
+
+<Typeset
+  fontSizes={Object.values(fontSize).map(([size]) => size)}
+  fontWeight={400}
+  sampleText="El veloz murciélago hindú comía feliz cardillo y kiwi."
+/>
+
+### Radios de borde
+
+<table>
+  <thead>
+    <tr>
+      <th>Clase</th>
+      <th>Valor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {Object.entries(radius).map(([name, value]) => (
+      <tr key={name}>
+        <td>
+          <code>{name === "DEFAULT" ? "rounded" : `rounded-${name}`}</code>
+        </td>
+        <td>{value}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+## Agregar un componente
+
+1. Crear la carpeta `packages/ui/src/components/<nombre>/` con `<nombre>.tsx`,
+   `<nombre>.variants.ts` (si tiene variantes) y `<nombre>.stories.tsx`.
+2. Exportarlo explícitamente desde `packages/ui/src/index.ts`.
+3. Ejecutar `pnpm --filter @repo/storybook dev` y revisar el panel de accesibilidad en ambos
+   temas antes de abrir el PR.

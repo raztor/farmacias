@@ -1,0 +1,9 @@
+{
+  "extends": "@repo/tsconfig/react-library.json",
+  "compilerOptions": {
+    // `.storybook/main.ts` is loaded by Node, which needs explicit `.ts` extensions.
+    "allowImportingTsExtensions": true,
+    "types": ["vite/client"]
+  },
+  "include": [".storybook/*.ts", ".storybook/*.tsx", "src", "*.config.ts"]
+}

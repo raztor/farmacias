@@ -1,0 +1,51 @@
+{
+  "name": "farmacias",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=26.0.0",
+    "pnpm": ">=12.16.0"
+  },
+  "scripts": {
+    "setup": "node tooling/scripts/src/setup-env.ts",
+    "dev": "turbo run dev",
+    "dev:services": "docker compose up -d",
+    "dev:services:down": "docker compose down",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:deps": "node tooling/scripts/src/check-deps.ts",
+    "check:arch": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "check": "pnpm format:check && pnpm check:deps && pnpm check:naming && pnpm check:arch && turbo run lint typecheck test",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "pnpm --filter @repo/db db:migrate",
+    "db:deploy": "pnpm --filter @repo/db db:deploy",
+    "db:seed": "pnpm --filter @repo/server db:seed",
+    "db:studio": "pnpm --filter @repo/db db:studio",
+    "changeset": "changeset",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "prepare": "husky",
+    "check:naming": "node tooling/scripts/src/check-naming.ts"
+  },
+  "devDependencies": {
+    "@changesets/cli": "catalog:",
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
+    "@repo/prettier-config": "workspace:*",
+    "@types/node": "catalog:",
+    "dependency-cruiser": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
+    "prettier": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  },
+  "prettier": "@repo/prettier-config"
+}

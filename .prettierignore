@@ -1,0 +1,17 @@
+node_modules
+pnpm-lock.yaml
+dist
+build
+.next
+.expo
+.turbo
+coverage
+storybook-static
+dist-export
+playwright-report
+test-results
+packages/db/src/generated
+packages/db/prisma/migrations
+apps/mobile/ios
+apps/mobile/android
+CHANGELOG.md

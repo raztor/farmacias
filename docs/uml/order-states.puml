@@ -1,0 +1,52 @@
+@startuml order-states
+' Máquina de estados del pedido (Inception §4.6, D-02, D-03, D-11, D-14).
+' Spec: docs/specs/order-status.md (tabla T1..T17).
+title Estados del pedido — MVP Farmacia Comunitaria Peñalolén
+hide empty description
+
+state "Borrador" as draft
+state "Pendiente de pago" as pending_payment
+state "Pago validado" as payment_validated
+state "Pago rechazado" as payment_rejected
+state "En preparación" as in_preparation
+state "Listo para retiro" as ready_for_pickup
+state "En ruta" as in_transit
+state "Entregado" as delivered
+state "No entregado" as not_delivered
+state "Cancelado" as cancelled
+
+[*] --> draft : agregar primer producto (residente)
+draft --> pending_payment : T1 confirmar (residente dueño)
+pending_payment --> payment_validated : T2 pago aprobado (sistema)\n/ descuenta stock una vez
+pending_payment --> payment_rejected : T3 pago rechazado (sistema)\n/ stock sin cambios
+payment_rejected --> payment_validated : T4 reintento aprobado (sistema)\n/ descuenta stock una vez
+payment_rejected --> payment_rejected : T5 reintento rechazado (sistema)
+payment_validated --> in_preparation : T6 operación
+in_preparation --> ready_for_pickup : T7 operación [retiro]
+in_preparation --> in_transit : T8 operación [despacho]
+ready_for_pickup --> delivered : T9 operación
+in_transit --> delivered : T10 operación
+in_transit --> not_delivered : T11 operación
+not_delivered --> in_transit : T12 operación (reintento)
+not_delivered --> cancelled : T13 operación\n/ sin restauración automática
+draft --> cancelled : T14 dueño u operación
+pending_payment --> cancelled : T15 dueño u operación
+payment_rejected --> cancelled : T16 dueño u operación
+payment_validated --> cancelled : T17 dueño u operación\n/ restaura stock
+delivered --> [*]
+cancelled --> [*]
+
+note right of in_preparation
+  Desde aquí no hay cancelación ni
+  restauración automática (D-02):
+  la corrección es un ajuste manual
+  autorizado (HU-10, Should).
+end note
+
+note bottom of cancelled
+  Toda transición no listada se rechaza
+  (CONFLICT) y conserva el estado anterior.
+  Cada transición aplicada escribe
+  OrderStatusEvent + AuditLog.
+end note
+@enduml

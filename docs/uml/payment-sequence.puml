@@ -1,0 +1,56 @@
+@startuml payment-sequence
+' Secuencia del pago simulado (HU-05, HU-06; RF-06..RF-08, RNF-08, RNF-11; D-09, D-12).
+' Spec: docs/specs/payments.md.
+title Pago simulado — idempotencia, descuento atómico y conflicto de stock
+autonumber
+
+actor "Persona (resident)" as R
+participant "App de vecinos\n(apps/mobile)" as App
+participant "payments.service" as P
+participant "order-status\n(máquina pura)" as OST
+participant "PaymentGateway\n(SimulatedPaymentGateway)" as GW
+participant "inventory.service" as INV
+database "PostgreSQL" as DB
+
+R -> App : «Simular pago aprobado» / «Simular pago rechazado»
+App -> P : payments.pay(orderId, idempotencyKey, scenario)
+P -> DB : buscar pedido del dueño y pago por idempotencyKey
+
+alt clave ya usada en este pedido
+  DB --> P : pago guardado
+  P --> App : resultado guardado (replayed = true, sin efectos)
+else pedido ya en payment_validated o posterior
+  P --> App : pago aprobado existente (sin segundo descuento)
+else pedido ajeno o inexistente
+  P --> App : NOT_FOUND
+else intento nuevo
+  P -> OST : assertTransition(estado actual -> resultado, system)
+  P -> DB : BEGIN; INSERT payment (UNIQUE idempotency_key)
+  P -> GW : charge(orderId, amountClp, idempotencyKey, scenario)
+  GW --> P : outcome, reference "SIM-..."
+  alt outcome = approved
+    P -> INV : discountForOrder(tx, líneas ordenadas por productId)
+    loop por cada línea
+      INV -> DB : UPDATE inventory_items\nSET on_hand = on_hand - q\nWHERE product_id = p AND on_hand >= q
+    end
+    alt todas las líneas descontadas
+      INV -> DB : INSERT stock_movements (sale) + audit stock.sale
+      P -> DB : UPDATE orders SET status = payment_validated\nWHERE id AND status AND version (CAS)
+      P -> DB : INSERT order_status_events (system) + audit order.transition
+      P -> DB : COMMIT
+      P --> App : approved — «Pago validado»
+    else falta stock en alguna línea
+      P -> DB : revertir descuento (sin descuentos parciales)
+      P -> DB : payment.status = stock_conflict\n+ audit payment.stock_conflict (productos)
+      P -> DB : COMMIT (pedido conserva su estado)
+      P --> App : CONFLICT STOCK_CONFLICT (lista de productos)
+    end
+  else outcome = rejected
+    P -> DB : payment.status = rejected
+    P -> DB : CAS pedido -> payment_rejected + evento + auditoría
+    P -> DB : COMMIT (stock sin cambios)
+    P --> App : rejected — «Puedes intentarlo de nuevo o cancelar»
+  end
+end
+App --> R : resultado y siguiente paso
+@enduml

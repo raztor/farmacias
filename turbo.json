@@ -1,0 +1,52 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalDependencies": ["tooling/typescript/*.json", "tooling/eslint/*.js"],
+  "globalEnv": ["NODE_ENV"],
+  "tasks": {
+    "db:generate": {
+      "inputs": ["prisma/**", "prisma.config.ts"],
+      "outputs": ["src/generated/**"]
+    },
+    "build": {
+      "dependsOn": ["^build", "^db:generate", "db:generate"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "storybook-static/**"],
+      "env": [
+        "NEXT_PUBLIC_*",
+        "EXPO_PUBLIC_*",
+        "SENTRY_*",
+        "API_INTERNAL_URL",
+        "SKIP_ENV_VALIDATION"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": ["^db:generate", "db:generate"],
+      "outputs": ["node_modules/.cache/tsbuildinfo*.json"]
+    },
+    "lint": {
+      "dependsOn": ["^db:generate", "db:generate"]
+    },
+    "test": {
+      "dependsOn": ["^db:generate", "db:generate"],
+      "outputs": []
+    },
+    "test:integration": {
+      "dependsOn": ["^db:generate", "db:generate"],
+      "cache": false,
+      "passThroughEnv": ["CI", "TEST_DATABASE_URL"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "passThroughEnv": ["CI", "E2E_*", "PLAYWRIGHT_*", "API_INTERNAL_URL", "SKIP_ENV_VALIDATION"]
+    },
+    "dev": {
+      "dependsOn": ["^db:generate", "db:generate"],
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

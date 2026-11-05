@@ -1,0 +1,337 @@
+// Prisma schema for @repo/db.
+//
+// Auth models follow the Better Auth 1.7 core schema plus the `admin` plugin fields and the
+// database-backed rate limiter (`rateLimit.storage = "database"`). Prisma model and field
+// names are what the Better Auth Prisma adapter addresses (user, session, account,
+// verification, rateLimit); tables and columns are mapped to snake_case.
+//
+// Every DateTime is `timestamptz(3)` in UTC, auth models included (D-23, R-DAT-01).
+//
+// Domain models (catalog, inventory, orders, payments, audit) live below the auth models; see
+// docs/specs/data-model.md. Statuses, categories, reasons and roles are stored as TEXT guarded by
+// CHECK constraints (no Prisma enums, see the migration SQL); their TypeScript unions live in
+// @repo/shared (ORDER_STATUSES, PRODUCT_CATEGORIES...), so clients never import @repo/db.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = ""
+  // postgresqlExtensions: pg_trgm for the catalog search index; partialIndexes: one draft per
+  // resident (`orders_one_draft_per_resident`).
+  previewFeatures        = ["postgresqlExtensions", "partialIndexes"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pg_trgm]
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  // admin plugin
+  // Better Auth may store several comma-separated roles, so there is no CHECK here.
+  role          String    @default("resident")
+  banned        Boolean   @default(false)
+  banReason     String?   @map("ban_reason")
+  banExpires    DateTime? @map("ban_expires") @db.Timestamptz(3)
+
+  sessions Session[]
+  accounts Account[]
+
+  orders         Order[]
+  orderEvents    OrderStatusEvent[]
+  stockMovements StockMovement[]
+  auditLogs      AuditLog[]
+
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+  token          String   @unique
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  userId         String   @map("user_id")
+  // admin plugin: id of the admin impersonating this session
+  impersonatedBy String?  @map("impersonated_by")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  lastRequest BigInt @map("last_request")
+
+  @@map("rate_limit")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Catalog and inventory (HU-01, HU-06; RF-01, RF-02, RF-07, RF-08, RNF-04, RNF-08)
+// ---------------------------------------------------------------------------------------------
+
+/// Synthetic medicine sold by the community pharmacy.
+model Product {
+  id               String   @id @default(uuid(7))
+  /// Stable business key; the seed upserts by it.
+  sku              String   @unique
+  commercialName   String   @map("commercial_name")
+  activeIngredient String   @map("active_ingredient")
+  presentation     String
+  /// One of PRODUCT_CATEGORIES (@repo/shared). CHECK products_category_check.
+  category         String
+  /// Price in Chilean pesos (no decimals). CHECK products_price_clp_check (> 0).
+  priceClp         Int      @map("price_clp")
+  active           Boolean  @default(true)
+  /// normalizeSearchText(commercialName + activeIngredient + presentation): lowercase, no
+  /// accents. Searched with ILIKE '%term%' through the trigram index.
+  searchText       String   @map("search_text")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  inventory      InventoryItem?
+  stockMovements StockMovement[]
+  orderLines     OrderLine[]
+
+  @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin, map: "products_search_text_trgm_idx")
+  @@index([category, commercialName])
+  @@index([commercialName])
+  @@map("products")
+}
+
+/// Current stock of a product (one row per product).
+model InventoryItem {
+  productId         String   @id @map("product_id")
+  /// Units on hand. CHECK inventory_items_on_hand_check (>= 0): stock can never go negative.
+  onHand            Int      @map("on_hand")
+  /// availableQty <= lowStockThreshold shows the product as "low". CHECK (>= 0).
+  lowStockThreshold Int      @default(5) @map("low_stock_threshold")
+  /// Incremented by every stock change (optimistic concurrency).
+  version           Int      @default(0)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_items")
+}
+
+/// Append-only ledger: every stock change writes exactly one row (RF-12, RNF-07).
+model StockMovement {
+  id             String   @id @default(uuid(7))
+  productId      String   @map("product_id")
+  /// Signed change (never 0). CHECK quantity_after = quantity_before + delta.
+  delta          Int
+  /// One of STOCK_MOVEMENT_REASONS (@repo/shared). CHECK stock_movements_reason_check.
+  reason         String
+  orderId        String?  @map("order_id")
+  paymentId      String?  @map("payment_id")
+  actorId        String?  @map("actor_id")
+  quantityBefore Int      @map("quantity_before")
+  quantityAfter  Int      @map("quantity_after")
+  note           String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  product Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  actor   User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([actorId])
+  @@map("stock_movements")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Orders (HU-03, HU-04, HU-07..HU-09; RF-04, RF-05, RF-09..RF-12)
+// ---------------------------------------------------------------------------------------------
+
+/// A resident's order. The draft (status "draft") is the cart: at most one per resident.
+model Order {
+  id                       String   @id @default(uuid(7))
+  /// Human readable unique code ("P-000123") from the order_code_seq sequence.
+  code                     String   @unique @default(dbgenerated("next_order_code()"))
+  residentId               String   @map("resident_id")
+  /// One of ORDER_STATUSES (@repo/shared). CHECK orders_status_check.
+  status                   String   @default("draft")
+  /// "pickup" | "delivery"; null only while draft (or cancelled from draft).
+  fulfillment              String?
+  /// Simulated delivery data (D-04), synthetic only. Required when fulfillment = "delivery".
+  deliverySector           String?  @map("delivery_sector")
+  deliveryAddressReference String?  @map("delivery_address_reference")
+  deliveryContactAlias     String?  @map("delivery_contact_alias")
+  deliveryInstructions     String?  @map("delivery_instructions")
+  /// Sum of line totals in CLP, recomputed server side. CHECK (>= 0).
+  totalClp                 Int      @default(0) @map("total_clp")
+  /// Compare-and-set guard for status transitions.
+  version                  Int      @default(0)
+  /// When the order was placed. While draft it is when the cart was opened; the trigger
+  /// `orders_stamp_placement` re-stamps it when the order leaves draft (confirm), so the FIFO
+  /// queue, "Mis pedidos" and the creation date follow placement order (R-DAT-11).
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  resident       User               @relation(fields: [residentId], references: [id], onDelete: Restrict)
+  lines          OrderLine[]
+  events         OrderStatusEvent[]
+  payments       Payment[]
+  stockMovements StockMovement[]
+
+  /// One draft (cart) per resident. Prisma lists `residentId` in OrderWhereUniqueInput because
+  /// of this partial index: always add `status: "draft"` when querying by it.
+  @@unique([residentId], map: "orders_one_draft_per_resident", where: { status: "draft" })
+  @@index([status, fulfillment, createdAt])
+  @@index([createdAt])
+  @@index([residentId, createdAt])
+  @@map("orders")
+}
+
+/// Product line of an order (one per product).
+model OrderLine {
+  id           String   @id @default(uuid(7))
+  orderId      String   @map("order_id")
+  productId    String   @map("product_id")
+  /// CHECK order_lines_quantity_check (1..99).
+  quantity     Int
+  /// Price snapshot taken when adding the line and refreshed on confirm. CHECK (> 0).
+  unitPriceClp Int      @map("unit_price_clp")
+  /// CHECK line_total_clp = quantity * unit_price_clp.
+  lineTotalClp Int      @map("line_total_clp")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, productId])
+  @@index([productId])
+  @@map("order_lines")
+}
+
+/// History of applied status transitions (timeline, RF-11/RF-12).
+model OrderStatusEvent {
+  id         String   @id @default(uuid(7))
+  orderId    String   @map("order_id")
+  /// Null only for the creation event. CHECK: an ORDER_STATUSES value.
+  fromStatus String?  @map("from_status")
+  toStatus   String   @map("to_status")
+  actorId    String?  @map("actor_id")
+  /// One of ACTOR_ROLES (@repo/shared). CHECK order_status_events_actor_role_check.
+  actorRole  String   @map("actor_role")
+  /// Optional operator note, at most 200 characters (CHECK).
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+  @@index([actorId])
+  @@map("order_status_events")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Simulated payments (HU-05, HU-06; RF-06..RF-08, RNF-08, RNF-11)
+// ---------------------------------------------------------------------------------------------
+
+/// One simulated payment attempt. The idempotency key makes retries side-effect free.
+model Payment {
+  id             String   @id @default(uuid(7))
+  orderId        String   @map("order_id")
+  /// Client generated (uuid) key, unique across all payments.
+  idempotencyKey String   @unique @map("idempotency_key")
+  /// CHECK payments_amount_clp_check (> 0).
+  amountClp      Int      @map("amount_clp")
+  /// One of PAYMENT_STATUSES (@repo/shared). CHECK payments_status_check.
+  status         String
+  /// Gateway reference ("SIM-..."), when the gateway answered.
+  reference      String?
+  failureReason  String?  @map("failure_reason")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  stockMovements StockMovement[]
+
+  /// Safety net for RNF-08: at most one approved payment per order (never a second discount).
+  /// Prisma lists `orderId` in PaymentWhereUniqueInput because of this partial index: always
+  /// add `status: "approved"` when querying by it.
+  @@unique([orderId], map: "payments_one_approved_per_order", where: { status: "approved" })
+  @@index([orderId, createdAt])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Audit (RF-12, RNF-07)
+// ---------------------------------------------------------------------------------------------
+
+/// Minimal audit trail, written in the same transaction as the audited change.
+model AuditLog {
+  id         String   @id @default(uuid(7))
+  actorId    String?  @map("actor_id")
+  /// One of ACTOR_ROLES (@repo/shared). CHECK audit_logs_actor_role_check.
+  actorRole  String   @map("actor_role")
+  /// One of AUDIT_ACTIONS (@repo/shared). CHECK audit_logs_action_check.
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+  @@index([actorId])
+  @@map("audit_logs")
+}
