@@ -1,0 +1,157 @@
+# Pre-production deployment on Azure (docs/azure/README.md, infra/README.md).
+# Runs only for the QA branch; main is reserved for production and DEV only runs CI.
+#
+# build  → pushes the 5 images to GHCR, tagged with the commit SHA and `qa`.
+# deploy → migrations job (stops here if it fails) → server + worker → admin + web.
+#          Signs in to Azure with OIDC through the GitHub environment "qa" (QA branch only).
+name: Deploy QA (Azure pre-producción)
+
+on:
+  push:
+    branches: [QA]
+  workflow_dispatch:
+
+# One deployment at a time; a newer push waits instead of cancelling a half-done release.
+concurrency:
+  group: deploy-qa
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_BASE: ghcr.io/${{ github.repository_owner }}/farmacias
+
+jobs:
+  build:
+    name: Imagen (${{ matrix.image }})
+    if: github.ref == 'refs/heads/QA'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: server
+            file: apps/server/Dockerfile
+            build-args: ""
+          - image: worker
+            file: apps/worker/Dockerfile
+            build-args: ""
+          - image: admin
+            file: apps/admin/Dockerfile
+            # Next.js bakes the rewrites in at build time: the server's name inside Container Apps.
+            build-args: API_INTERNAL_URL=http://ca-farm-server
+          - image: mobile-web
+            file: apps/mobile/Dockerfile.web
+            build-args: ""
+          - image: migrate
+            file: docker/migrate.Dockerfile
+            build-args: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          push: true
+          build-args: ${{ matrix.build-args }}
+          tags: |
+            ${{ env.IMAGE_BASE }}-${{ matrix.image }}:${{ github.sha }}
+            ${{ env.IMAGE_BASE }}-${{ matrix.image }}:qa
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=deploy-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=deploy-${{ matrix.image }}
+
+  deploy:
+    name: Desplegar en Azure (QA)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: qa
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+      TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check that the infrastructure exists
+        id: infra
+        run: |
+          if az containerapp show --resource-group "$RG" --name ca-farm-server --output none 2>/dev/null; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::The QA infrastructure does not exist yet. Images are pushed; run IMAGE_TAG=$TAG infra/scripts/deploy.sh apply (infra/README.md)."
+          fi
+
+      - name: Run migrations
+        if: steps.infra.outputs.ready == 'true'
+        run: infra/scripts/run-job.sh caj-farm-migrate "$IMAGE_BASE-migrate:$TAG"
+
+      - name: Update server and worker
+        if: steps.infra.outputs.ready == 'true'
+        run: |
+          az containerapp update -g "$RG" -n ca-farm-server --image "$IMAGE_BASE-server:$TAG" --output none
+          az containerapp update -g "$RG" -n ca-farm-worker --image "$IMAGE_BASE-worker:$TAG" --output none
+          # The seed job runs the server image: keep it on the same version.
+          az containerapp job update -g "$RG" -n caj-farm-seed --image "$IMAGE_BASE-server:$TAG" --output none
+
+      - name: Wait for the new server revision
+        if: steps.infra.outputs.ready == 'true'
+        run: |
+          for _ in $(seq 1 30); do
+            latest=$(az containerapp show -g "$RG" -n ca-farm-server --query properties.latestRevisionName -o tsv)
+            ready=$(az containerapp show -g "$RG" -n ca-farm-server --query properties.latestReadyRevisionName -o tsv)
+            if [ "$latest" = "$ready" ]; then echo "Server revision $ready is ready"; exit 0; fi
+            sleep 10
+          done
+          echo "::error::Server revision $latest did not become ready"
+          exit 1
+
+      - name: Update admin and web
+        if: steps.infra.outputs.ready == 'true'
+        run: |
+          az containerapp update -g "$RG" -n ca-farm-admin --image "$IMAGE_BASE-admin:$TAG" --output none
+          az containerapp update -g "$RG" -n ca-farm-web --image "$IMAGE_BASE-mobile-web:$TAG" --output none
+
+      - name: Summary
+        if: steps.infra.outputs.ready == 'true'
+        run: |
+          web=$(az containerapp show -g "$RG" -n ca-farm-web --query properties.configuration.ingress.fqdn -o tsv)
+          admin=$(az containerapp show -g "$RG" -n ca-farm-admin --query properties.configuration.ingress.fqdn -o tsv)
+          {
+            echo "### QA desplegado (${TAG:0:7})"
+            echo "- App del residente: https://$web"
+            echo "- Backoffice: https://$admin"
+          } >> "$GITHUB_STEP_SUMMARY"

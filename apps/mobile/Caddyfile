@@ -40,8 +40,11 @@
 
 	@api path /api/auth/* /trpc/*
 	handle @api {
-		# Caddy keeps the original Host and appends X-Forwarded-For/-Proto/-Host.
-		reverse_proxy {$API_UPSTREAM:http://server:4000}
+		# Appends X-Forwarded-For/-Proto/-Host. Host is set to the upstream's name because the
+		# Azure Container Apps ingress routes by Host (the public Host would loop back to this app).
+		reverse_proxy {$API_UPSTREAM:http://server:4000} {
+			header_up Host {http.reverse_proxy.upstream.host}
+		}
 	}
 
 	# Content-hashed files: cached for a year. A missing one is a plain 404 (never cached and
