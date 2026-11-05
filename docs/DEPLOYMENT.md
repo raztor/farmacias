@@ -56,6 +56,7 @@ La versión web de la app para vecinos ([ADR 0002](./adr/0002-clientes-expo-univ
 - Fallback SPA a `/index.html` (Expo Router resuelve la ruta en el navegador), `Cache-Control: public, max-age=31536000, immutable` para `/_expo/static/*` y `/assets/*` (nombres con hash) y `no-cache` para el HTML. Un asset con hash inexistente responde 404 (no `index.html`).
 - Headers de seguridad: CSP (`script-src 'self'`; `style-src` admite `'unsafe-inline'` porque react-native-web inyecta estilos en runtime; `connect-src 'self' https:` para Sentry), HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` y `Cross-Origin-Opener-Policy`.
 - `EXPO_PUBLIC_SENTRY_DSN` se incrusta en el bundle (build arg).
+- En el proxy hacia la API, Caddy reemplaza el `Host` por el nombre del upstream (`server`, `ca-farm-server`) y conserva el original en `X-Forwarded-Host`. El ingress de Azure Container Apps enruta por `Host`, y con el `Host` público la petición volvería a mobile-web.
 - Caddy escucha en `PORT` (8080) sin TLS (`auto_https off`): el TLS lo termina el proxy inverso de delante. Su estado va a `/tmp` (`XDG_*`), por lo que el contenedor funciona con sistema de archivos de solo lectura.
 - La URL pública de esta web debe estar en `TRUSTED_ORIGINS` del server (Better Auth valida el `Origin` de los POST de autenticación).
 
