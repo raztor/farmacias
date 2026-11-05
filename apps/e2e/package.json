@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test:e2e": "playwright test",
+    "test:support": "playwright test --project=e2e-support",
     "e2e:stack": "node src/scripts/e2e-stack.ts up",
     "e2e:full": "node src/scripts/e2e-stack.ts test",
     "lint": "eslint . --max-warnings 0",

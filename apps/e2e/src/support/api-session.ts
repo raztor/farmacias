@@ -63,6 +63,8 @@ export const operatorApi = (factory: APIRequest): Promise<ApiSession> =>
  * Creates a throwaway resident account (public sign-up is disabled, so the seed admin creates
  * it with the Better Auth admin plugin). One per test: a resident has at most one draft order,
  * so sharing accounts would make tests depend on each other. Synthetic data only (RNF-06).
+ * No `role` is sent: the admin role lacks `user:set-role`, so the endpoint only creates accounts
+ * with the default `resident` role (R-ACC-08).
  */
 export async function createResident(admin: ApiSession, label: string): Promise<Credentials> {
   const email = `e2e-${randomUUID()}@demo.farmacia.cl`;
@@ -71,7 +73,6 @@ export async function createResident(admin: ApiSession, label: string): Promise<
       email,
       password: E2E_RESIDENT_PASSWORD,
       name: `Residente E2E ${label}`,
-      role: "resident",
     },
   });
   const body: unknown = await response.json().catch(() => null);

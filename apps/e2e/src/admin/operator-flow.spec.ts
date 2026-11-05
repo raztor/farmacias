@@ -27,7 +27,7 @@ async function advance(
 
 /**
  * Operator path in the back office (T-08): HU-07 queue with filters → HU-08 physical progress of
- * a pickup order (En preparación → Listo para retiro → Entregado). Only the transitions the state
+ * a pickup order («En preparación» → «Listo para retiro» → «Entregado»). Only the transitions the state
  * machine allows are offered, and the API rejects any other one (§4.6).
  */
 test.describe("admin: bandeja y avance de un pedido (HU-07, HU-08)", () => {

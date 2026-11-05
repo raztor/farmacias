@@ -27,11 +27,19 @@ test.describe("mobile-web: inicio de sesión", () => {
 
   test("valida los campos sin llamar a la API", async ({ page }) => {
     await page.goto("/sign-in");
+    await expect(page.getByTestId("sign-in-submit")).toBeVisible();
+    // Recorded from here on: the session check of the page load is not a sign-in attempt.
+    const signInCalls: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/auth/sign-in")) signInCalls.push(request.url());
+    });
 
     await page.getByTestId("sign-in-submit").click();
 
     await expect(page.getByText("Ingresa un correo electrónico válido")).toBeVisible();
     await expect(page.getByText("Ingresa tu contraseña")).toBeVisible();
+    // The form calls `signIn.mutate` in the same press handler, so a request would be out already.
+    expect(signInCalls).toEqual([]);
   });
 
   test("una persona inscrita inicia sesión y vuelve a la pantalla pedida (HU-02 #1)", async ({

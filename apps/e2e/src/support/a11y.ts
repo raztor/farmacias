@@ -1,7 +1,7 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, type Locator, type Page, type TestInfo } from "@playwright/test";
 
-import { horizontalOverflow } from "./layout.ts";
+import { reflowProblems } from "./layout.ts";
 
 /**
  * Accessibility helpers of the T-09 audit (RNF-01, RNF-02; docs/validation/accesibilidad.md).
@@ -123,7 +123,8 @@ export function focusIndicator(page: Page): Promise<FocusIndicator> {
 
 /**
  * Full check of one screen: axe (WCAG A/AA, serious + critical) at the project viewport, then
- * the same screen at 200 % zoom (640 px) must keep `ready` visible without horizontal scroll.
+ * the same screen at 200 % zoom (640 px) must keep `ready` visible, with no horizontal scroll of
+ * the document and no box that clips or scrolls its content sideways (`reflowProblems`).
  * Returns the problems found (empty = pass) so a walk over several screens reports all of them.
  */
 export async function checkScreen(
@@ -137,9 +138,8 @@ export async function checkScreen(
   const viewport = page.viewportSize();
   await page.setViewportSize(ZOOM_200_VIEWPORT);
   await expect(ready).toBeVisible();
-  const overflow = await horizontalOverflow(page);
-  if (overflow > 0) {
-    problems.push(`${screen}: ${String(overflow)} px de scroll horizontal a 640 px (zoom 200 %)`);
+  for (const problem of await reflowProblems(page)) {
+    problems.push(`${screen} a 640 px (zoom 200 %): ${problem}`);
   }
   if (viewport !== null) await page.setViewportSize(viewport);
   return problems;

@@ -19,9 +19,15 @@ import { E2E_BRANDED_BROWSERS, E2E_URLS, IS_CI } from "./src/support/env.ts";
  * Microsoft Edge (`channel: "chrome" | "msedge"`): `*-chrome` and `*-edge` projects.
  *
  * Pick a subset with `--project`, e.g. `--project=admin-chromium --project=mobile-web-pixel`.
+ * Every browser and accessibility project depends on `e2e-setup`, which runs first and takes the
+ * product lane snapshot of the run (`src/support/product-lanes.ts`). `e2e-support` holds the
+ * self-tests of the support helpers and needs no stack.
  */
 
 const LOCALE = { locale: "es-CL", timezoneId: "America/Santiago" } as const;
+
+/** Takes the product lane snapshot before any spec runs (`src/support/product-lanes.ts`). */
+const SETUP_PROJECT = "e2e-setup";
 
 const browserProjects = (
   app: "admin" | "mobile-web",
@@ -31,6 +37,7 @@ const browserProjects = (
   Object.entries(targets).map(([target, device]) => ({
     name: `${app}-${target}`,
     testDir: `./src/${app}`,
+    dependencies: [SETUP_PROJECT],
     use: { ...device, ...LOCALE, baseURL },
   }));
 
@@ -42,6 +49,7 @@ const browserProjects = (
 const a11yProject = (app: "admin" | "mobile-web", baseURL: string): Project => ({
   name: `a11y-${app}`,
   testDir: `./src/a11y/${app}`,
+  dependencies: [SETUP_PROJECT],
   use: { ...devices["Desktop Chrome"], ...LOCALE, baseURL },
 });
 
@@ -90,5 +98,19 @@ export default defineConfig({
     }),
     a11yProject("admin", E2E_URLS.admin),
     a11yProject("mobile-web", E2E_URLS.mobileWeb),
+    // Last, so the browser projects keep their indexes (`projectSlot`, `PRODUCT_LANES`).
+    {
+      name: SETUP_PROJECT,
+      testDir: "./src/setup",
+      testMatch: "**/*.setup.ts",
+      use: { ...devices["Desktop Chrome"], ...LOCALE },
+    },
+    // Self-tests of the support helpers on synthetic pages and fake APIs: no stack needed
+    // (`pnpm --filter @repo/e2e test:support`).
+    {
+      name: "e2e-support",
+      testDir: "./src/self-test",
+      use: { ...devices["Desktop Chrome"], ...LOCALE },
+    },
   ],
 });

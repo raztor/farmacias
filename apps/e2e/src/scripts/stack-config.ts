@@ -115,9 +115,16 @@ export function workerEnv(config: StackConfig): Record<string, string> {
   };
 }
 
-/** Environment of `apps/admin` (build: rewrites; runtime: server-side session lookup). */
+/**
+ * Environment of `apps/admin` (build: rewrites; runtime: server-side session lookup and the
+ * residents' app linked from «Sin acceso»).
+ */
 export function adminEnv(config: StackConfig): Record<string, string> {
-  return { API_INTERNAL_URL: config.urls.api, NEXT_TELEMETRY_DISABLED: "1" };
+  return {
+    API_INTERNAL_URL: config.urls.api,
+    RESIDENT_APP_URL: config.urls.mobileWeb,
+    NEXT_TELEMETRY_DISABLED: "1",
+  };
 }
 
 /** Environment of the Expo web export: empty API URL = same origin (proxied, like Caddy). */

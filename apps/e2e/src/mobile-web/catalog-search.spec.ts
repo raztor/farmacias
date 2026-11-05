@@ -1,5 +1,6 @@
 import { expect, projectSlot, test } from "../support/fixtures.ts";
-import { PRODUCT_LANES, pickProduct } from "../support/orders-api.ts";
+import { catalogProducts } from "../support/orders-api.ts";
+import { hasDiacritics, stripDiacritics } from "../support/search-terms.ts";
 
 /**
  * HU-01 (CAT-E01, CAT-E02): anonymous search on the Expo web app. Results show name, price and
@@ -11,14 +12,18 @@ test.describe("mobile-web: buscador del catálogo (HU-01)", () => {
     page,
     publicApi,
   }, testInfo) => {
-    const product = await pickProduct(publicApi, {
-      index: PRODUCT_LANES.accessControl + projectSlot(testInfo),
-    });
+    // A product whose active ingredient has an accent (Losartán, Bupropión…), so the term below
+    // really drops one. Read-only test: no lane needed, each project takes a different one.
+    const accented = (await catalogProducts(publicApi)).filter((item) =>
+      hasDiacritics(item.activeIngredient),
+    );
+    const product = accented[projectSlot(testInfo) % accented.length];
+    if (product === undefined) throw new Error("The seed catalog has no accented ingredient");
     // Upper case and without accents: the search is accent/case-insensitive (R-CAT-02).
-    const term = product.activeIngredient
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toUpperCase();
+    const term = stripDiacritics(product.activeIngredient).toUpperCase();
+    expect(term, "el término debe perder al menos una tilde").not.toBe(
+      product.activeIngredient.toUpperCase(),
+    );
 
     await page.goto("/");
     await page.getByTestId("catalog-search-input").fill(term);

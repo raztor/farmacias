@@ -1,3 +1,4 @@
+import { E2E_URLS } from "../support/env.ts";
 import { expect, projectSlot, signInOnAdmin, test } from "../support/fixtures.ts";
 import { PRODUCT_LANES, pickProduct, placePickupOrder } from "../support/orders-api.ts";
 import { trpcErrorCode } from "../support/trpc-http.ts";
@@ -36,6 +37,10 @@ test.describe("admin: acceso denegado a residentes (HU-07 #2)", () => {
     await expect(denied).toBeVisible();
     await expect(page.getByText(resident.email)).toBeVisible();
     await expect(page.getByRole("heading", { name: "Bandeja de pedidos" })).toHaveCount(0);
+    // R-ACC-07: the way out to the residents' app, next to «Cerrar sesión».
+    const exit = page.getByRole("link", { name: "Ir a la app de vecinos" });
+    await expect(exit).toHaveAttribute("href", E2E_URLS.mobileWeb);
+    await expect(page.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
 
     // Even its own order: the detail route is behind the same guard.
     await page.goto(`/orders/${order.id}`);
