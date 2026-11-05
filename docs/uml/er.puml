@@ -1,6 +1,8 @@
 @startuml er
 ' Modelo entidad-relación del dominio (T-01 #24). Specs: docs/specs/README.md y cada módulo.
 ' Tablas en snake_case; valores cerrados como texto con CHECK (sin enums).
+' Todas las fechas son timestamptz, también las de Better Auth (migración 20261104120000_auth_timestamptz).
+' Un pedido puede no tener líneas: el borrador empieza vacío y un borrador vacío se puede cancelar.
 title Modelo de datos — MVP Farmacia Comunitaria Peñalolén
 hide circle
 skinparam linetype ortho
@@ -66,7 +68,9 @@ entity "orders" as orders {
   delivery_instructions : text
   * total_clp : int
   * version : int
-  created_at / updated_at : timestamptz
+  created_at : timestamptz [instante de confirmación, trigger orders_stamp_placement (R-DAT-11)]
+  updated_at : timestamptz
+  UNIQUE (resident_id) WHERE status = 'draft' [orders_one_draft_per_resident (R-DAT-04)]
 }
 
 entity "order_lines" as lines {
@@ -84,7 +88,7 @@ entity "order_status_events" as events {
   * id : text <<PK>>
   --
   * order_id : text <<FK>>
-  * from_status : text
+  from_status : text [nulo solo en el evento de creación]
   * to_status : text
   actor_id : text <<FK>>
   * actor_role : text [resident | operator | admin | system]
@@ -102,6 +106,7 @@ entity "payments" as payments {
   reference : text
   failure_reason : text
   created_at : timestamptz
+  UNIQUE (order_id) WHERE status = 'approved' [payments_one_approved_per_order (R-DAT-05)]
 }
 
 entity "audit_logs" as audit {
@@ -120,7 +125,7 @@ entity "audit_logs" as audit {
 user ||--o{ orders : realiza
 products ||--|| inventory : stock
 products ||--o{ lines
-orders ||--|{ lines : contiene
+orders ||--o{ lines : contiene
 orders ||--o{ events : historial
 orders ||--o{ payments : intentos
 products ||--o{ movements

@@ -113,9 +113,14 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in docker/.env}
       TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:?Set TRUSTED_ORIGINS in docker/.env}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      # Client IP = right-most X-Forwarded-For entry that is not a private/loopback proxy: right
+      # for every route (TLS proxy → server, → admin → server, → mobile-web → server).
+      TRUST_PROXY_ADDRESSES: ${TRUST_PROXY_ADDRESSES:-loopback,uniquelocal}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+    # Loopback only: the TLS reverse proxy on the host is the only way in, so no client can
+    # reach the API with a forged X-Forwarded-For (sign-in rate limiting, R-ACC-09).
     ports:
-      - "${SERVER_PORT:-4000}:4000"
+      - "127.0.0.1:${SERVER_PORT:-4000}:4000"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -176,9 +181,12 @@ services:
     environment:
       NODE_ENV: production
       API_INTERNAL_URL: http://server:4000
+      RESIDENT_APP_URL: ${RESIDENT_APP_URL:-}
       NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    # Loopback only: Next.js rewrites pass the client's X-Forwarded-For through unchanged, so
+    # the admin must only be reachable through the TLS reverse proxy, which appends the real IP.
     ports:
-      - "${ADMIN_PORT:-3001}:3001"
+      - "127.0.0.1:${ADMIN_PORT:-3001}:3001"
     depends_on:
       server:
         condition: service_healthy
@@ -206,8 +214,11 @@ services:
       - /tmp
     environment:
       API_UPSTREAM: http://server:4000
+    # Loopback only, like server and admin: its Caddy trusts the X-Forwarded-For of private
+    # peers, and a published port can show external clients with a private source IP (rootless
+    # port forwarding), so only the TLS reverse proxy on the host may reach it (R-ACC-09).
     ports:
-      - "${MOBILE_WEB_PORT:-8080}:8080"
+      - "127.0.0.1:${MOBILE_WEB_PORT:-8080}:8080"
     depends_on:
       server:
         condition: service_healthy

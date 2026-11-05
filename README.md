@@ -63,29 +63,30 @@ Para trabajar en una sola app: `pnpm --filter @repo/admin dev` (o `@repo/mobile`
 
 ## Scripts
 
-| Script                   | Qué hace                                                                    |
-| ------------------------ | --------------------------------------------------------------------------- |
-| `pnpm dev`               | Todas las apps en modo desarrollo (Turborepo)                               |
-| `pnpm dev:services`      | Levanta PostgreSQL, Redis y Mailpit (`docker compose up -d`)                |
-| `pnpm dev:services:down` | Detiene los servicios de desarrollo                                         |
-| `pnpm run setup`         | Crea los `.env` locales desde los `.env.example`                            |
-| `pnpm build`             | Compila todas las apps                                                      |
-| `pnpm lint` / `lint:fix` | ESLint en todos los workspaces (con `--fix` para corregir)                  |
-| `pnpm typecheck`         | `tsc --noEmit` en todos los workspaces                                      |
-| `pnpm test`              | Tests unitarios (Vitest)                                                    |
-| `pnpm test:e2e`          | Tests end-to-end (Playwright en `apps/e2e`, Maestro en mobile)              |
-| `pnpm format`            | Formatea todo con Prettier (`format:check` solo verifica)                   |
-| `pnpm check:deps`        | Política de dependencias (catálogo, límites, paquetes prohibidos)           |
-| `pnpm check:naming`      | Nombres de archivos y carpetas en kebab-case                                |
-| `pnpm check:arch`        | Reglas de arquitectura con dependency-cruiser                               |
-| `pnpm check`             | Todo lo anterior + lint, typecheck y tests: **correr antes de abrir un PR** |
-| `pnpm db:generate`       | Genera el cliente de Prisma                                                 |
-| `pnpm db:migrate`        | Crea/aplica migraciones en desarrollo (`prisma migrate dev`)                |
-| `pnpm db:deploy`         | Aplica migraciones en producción (`prisma migrate deploy`)                  |
-| `pnpm db:seed`           | Datos iniciales (usuario admin)                                             |
-| `pnpm db:studio`         | Abre Prisma Studio                                                          |
-| `pnpm changeset`         | Registra un cambio para el changelog                                        |
-| `pnpm clean`             | Borra builds, cachés y `node_modules`                                       |
+| Script                   | Qué hace                                                                                                                                                                                                                                                                         |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`               | Todas las apps en modo desarrollo (Turborepo)                                                                                                                                                                                                                                    |
+| `pnpm dev:services`      | Levanta PostgreSQL, Redis y Mailpit (`docker compose up -d`)                                                                                                                                                                                                                     |
+| `pnpm dev:services:down` | Detiene los servicios de desarrollo                                                                                                                                                                                                                                              |
+| `pnpm run setup`         | Crea los `.env` locales desde los `.env.example`                                                                                                                                                                                                                                 |
+| `pnpm build`             | Compila todas las apps                                                                                                                                                                                                                                                           |
+| `pnpm lint` / `lint:fix` | ESLint en todos los workspaces (con `--fix` para corregir)                                                                                                                                                                                                                       |
+| `pnpm typecheck`         | `tsc --noEmit` en todos los workspaces                                                                                                                                                                                                                                           |
+| `pnpm test`              | Tests unitarios (Vitest)                                                                                                                                                                                                                                                         |
+| `pnpm test:integration`  | Tests de integración sobre PostgreSQL real (`*.int.test.ts` de `@repo/api` y `@repo/db`); requiere `TEST_DATABASE_URL` (ver [docs/REPO_RULES.md §8.1](docs/REPO_RULES.md#81-pruebas-de-integración-postgresql-real)). Sin esa variable se omiten, salvo en CI, donde es un error |
+| `pnpm test:e2e`          | Tests end-to-end (Playwright en `apps/e2e`, Maestro en mobile) contra un stack ya levantado; `pnpm --filter @repo/e2e e2e:full` levanta el stack, corre la suite y lo apaga ([docs/validation/e2e.md](docs/validation/e2e.md))                                                   |
+| `pnpm format`            | Formatea todo con Prettier (`format:check` solo verifica)                                                                                                                                                                                                                        |
+| `pnpm check:deps`        | Política de dependencias (catálogo, límites, paquetes prohibidos)                                                                                                                                                                                                                |
+| `pnpm check:naming`      | Nombres de archivos y carpetas en kebab-case                                                                                                                                                                                                                                     |
+| `pnpm check:arch`        | Reglas de arquitectura con dependency-cruiser                                                                                                                                                                                                                                    |
+| `pnpm check`             | Todo lo anterior + lint, typecheck y tests: **correr antes de abrir un PR**                                                                                                                                                                                                      |
+| `pnpm db:generate`       | Genera el cliente de Prisma                                                                                                                                                                                                                                                      |
+| `pnpm db:migrate`        | Crea/aplica migraciones en desarrollo (`prisma migrate dev`)                                                                                                                                                                                                                     |
+| `pnpm db:deploy`         | Aplica migraciones en producción (`prisma migrate deploy`)                                                                                                                                                                                                                       |
+| `pnpm db:seed`           | Datos de demo idempotentes: cuentas preinscritas de cada rol (residente, operario, administración; `SEED_*_PASSWORD`), catálogo sintético de 200 productos con su inventario y pedidos de demo                                                                                   |
+| `pnpm db:studio`         | Abre Prisma Studio                                                                                                                                                                                                                                                               |
+| `pnpm changeset`         | Registra un cambio para el changelog                                                                                                                                                                                                                                             |
+| `pnpm clean`             | Borra builds, cachés y `node_modules`                                                                                                                                                                                                                                            |
 
 ## Estructura
 

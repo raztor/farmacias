@@ -37,8 +37,8 @@ Criterio de «defecto crítico»: cualquier violación de impacto `serious` o `c
 | 8   | Estados no dependen solo del color (texto + símbolo)                 | 1.4.1        | RNF-01 | `screens.spec.ts`: «Pago validado», «Disponibilidad: …» como texto; axe `link-in-text-block`    | ✅     |
 | 9   | Contraste de texto ≥ 4,5:1                                           | 1.4.3        | RNF-01 | axe `color-contrast` + `contrast.test.ts`                                                       | ✅     |
 | 10  | Contraste de componentes y foco ≥ 3:1 (bordes de campos, anillo)     | 1.4.11       | RNF-01 | `contrast.test.ts` (axe no lo mide)                                                             | ✅     |
-| 11  | Zoom 200 % sin pérdida de información                                | 1.4.4        | RNF-02 | `checkScreen`: el contenido clave sigue visible a 640 px                                        | ✅     |
-| 12  | Reflujo sin scroll horizontal                                        | 1.4.10       | RNF-02 | `checkScreen` (640 px) + `responsive.spec.ts` de T-12 (320 px = 400 %)                          | ✅     |
+| 11  | Zoom 200 % sin pérdida de información                                | 1.4.4        | RNF-02 | `checkScreen`: el contenido clave sigue visible a 640 px y ninguna caja recorta contenido       | ✅     |
+| 12  | Reflujo sin scroll horizontal                                        | 1.4.10       | RNF-02 | `checkScreen` (640 px) + `responsive.spec.ts` de T-12 (320 px = 400 %), con `reflowProblems`    | ✅     |
 | 13  | Idioma de la página, títulos y encabezados                           | 3.1.1, 2.4.2 | RNF-01 | axe (`html-has-lang`, `document-title`, `heading-order`)                                        | ✅     |
 | 14  | Errores que dicen qué pasó y cómo seguir                             | 3.3.1, 3.3.3 | RNF-09 | Cubierto por los E2E de T-08 (`delivery-validation`, `payment-rejected`, `sign-in`)             | ✅     |
 
@@ -64,7 +64,14 @@ Pantallas auditadas, con datos reales creados por la API (residente desechable, 
 
 ### 3. Zoom 200 % (RNF-02)
 
-`checkScreen` repite cada pantalla con un viewport de **640 px** de ancho, que equivale a una ventana de 1280 px con el navegador al 200 %: el contenido clave de la pantalla debe seguir visible y el documento no puede tener scroll horizontal (`scrollWidth − clientWidth = 0`). Las tablas del admin pueden desplazarse dentro de su propia caja (excepción de WCAG 1.4.10 para tablas de datos). La prueba de T-12 (`responsive.spec.ts`) cubre además 320 px (400 %).
+`checkScreen` repite cada pantalla con un viewport de **640 px** de ancho, que equivale a una ventana de 1280 px con el navegador al 200 %: el contenido clave de la pantalla debe seguir visible y `reflowProblems` ([`apps/e2e/src/support/layout.ts`](../../apps/e2e/src/support/layout.ts)) no debe encontrar nada:
+
+- **Documento:** sin scroll horizontal (`scrollWidth − clientWidth = 0`).
+- **Cajas que recortan o se desplazan:** ningún elemento con `overflow-x` distinto de `visible` puede tener contenido más ancho que él (`scrollWidth > clientWidth`). Con `hidden`/`clip` el contenido queda **recortado** (información perdida); con `auto`/`scroll` la caja se desplaza de lado. El mensaje nombra la caja y el primer elemento que sobresale. Se excluyen los campos de formulario (desplazan su propio texto), los elementos visualmente ocultos (`sr-only`, como «Saltar al contenido» antes de recibir el foco) y las cajas que contienen una tabla de datos: las tablas del admin pueden desplazarse dentro de su propia caja (excepción de WCAG 1.4.10 para tablas de datos).
+
+La segunda parte es indispensable en la app del residente: cada pantalla vive dentro de un `ScrollView` de react-native-web (`overflow-x: hidden`), la plantilla web de Expo fija `body { overflow: hidden }` y las vistas de RN-web se encogen (`min-width: 0`). Una fila que no cabe a 640 px queda cortada en el borde derecho **sin ensanchar el documento**, así que la medición solo del documento (la que había antes de la revisión adversarial del PR [#37](https://github.com/raztor/farmacias/pull/37)) nunca podía fallar en la web de la app. Las autopruebas de [`apps/e2e/src/self-test/layout.spec.ts`](../../apps/e2e/src/self-test/layout.spec.ts) reproducen esa estructura y verifican que la medición del documento da 0 mientras `reflowProblems` detecta los 560 px recortados; además se comprobó contra el export web real insertando una fila de 1200 px en «Iniciar sesión» (documento: 0 px; `reflowProblems`: 672 px recortados en el `ScrollView`). Con la comprobación nueva, todas las pantallas críticas de ambas apps siguen pasando a 640 px y a 320 px.
+
+La prueba de T-12 (`responsive.spec.ts`) cubre además 320 px (400 %).
 
 ### 4. Contraste de tokens (prueba unitaria)
 
@@ -126,5 +133,5 @@ Los proyectos `a11y-admin` y `a11y-mobile-web` (definidos en [`apps/e2e/playwrig
 | RNF-01 teclado y foco visible            | `apps/e2e/src/a11y/mobile-web/keyboard.spec.ts`, `apps/e2e/src/a11y/admin/keyboard.spec.ts`                                  |
 | RNF-01 no depender solo del color        | `screens.spec.ts` (estado y disponibilidad como texto), `packages/ui/src/lib/tones.ts` (símbolo + texto en `Badge`/`Notice`) |
 | RNF-01 contraste                         | `packages/ui/src/lib/contrast.test.ts`, axe `color-contrast`                                                                 |
-| RNF-02 zoom 200 % sin scroll horizontal  | `checkScreen` en ambos `screens.spec.ts`; `responsive.spec.ts` (T-12, 320 px)                                                |
+| RNF-02 zoom 200 % sin scroll horizontal  | `checkScreen` en ambos `screens.spec.ts`; `responsive.spec.ts` (T-12, 320 px); autoprueba `self-test/layout.spec.ts`         |
 | Checklist manual documentado y evidencia | Este documento; reporte de Playwright con los adjuntos `axe-*` y anotaciones `focus`                                         |

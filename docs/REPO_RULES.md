@@ -171,7 +171,7 @@ TEST_DATABASE_URL=postgresql://app:app@localhost:5432/app pnpm test:integration
 # Solo @repo/api: pnpm --filter @repo/api test:integration
 ```
 
-CI: el job `integration` de `.github/workflows/ci.yml` levanta un servicio `postgres:18-alpine`, define `TEST_DATABASE_URL` y ejecuta `pnpm test:integration` (tarea Turborepo sin caché que solo recibe `TEST_DATABASE_URL` y `CI`). La tarea corre en `@repo/api` (Vitest, `*.int.test.ts`) y en `@repo/db` (`node:test`, restricciones del esquema, seed del catálogo y zona horaria de la sesión).
+CI: el job `integration` de `.github/workflows/ci.yml` levanta un servicio `postgres:18-alpine`, define `TEST_DATABASE_URL` y ejecuta `pnpm test:integration` (tarea Turborepo sin caché que solo recibe `TEST_DATABASE_URL` y `CI`). La tarea corre en `@repo/api` (Vitest, `*.int.test.ts`) y en `@repo/db` (Vitest, `vitest.integration.config.ts`: restricciones del esquema, paridad de las listas de `@repo/shared` con los `CHECK`, seed del catálogo, fechas `timestamptz` y zona horaria de la sesión).
 
 ### 8.2 E2E
 

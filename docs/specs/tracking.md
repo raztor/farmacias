@@ -82,16 +82,17 @@ Lee `orders` (filtrado siempre por `resident_id = sesión.user.id`), `order_line
 
 ## 7. Casos de prueba
 
-| ID      | Nivel | Caso                                                                                         | Criterio cubierto  | Archivo esperado                                             |
-| ------- | ----- | -------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------ |
-| TRK-U01 | unit  | Mapeo de línea de tiempo: orden ascendente, etiquetas en español, sin datos del actor        | HU-09 #1, R-TRK-02 | `packages/api/src/modules/tracking/tracking.service.test.ts` |
-| TRK-U02 | unit  | Pedido de otra cuenta → `NOT_FOUND` con el mismo mensaje que uno inexistente                 | HU-09 #2           | `packages/api/src/modules/tracking/tracking.service.test.ts` |
-| TRK-U03 | unit  | `mine` excluye borradores, ordena del más reciente y pagina                                  | R-TRK-04           | `packages/api/src/modules/tracking/tracking.service.test.ts` |
-| TRK-U04 | unit  | Cliente: helper de línea de tiempo (rol → «Tú»/«Sistema»/«Farmacia», fecha en hora de Chile) | R-TRK-02           | `apps/mobile/src/features/orders/order-status-view.test.ts`  |
-| TRK-I01 | int   | Pedido con varias transiciones: `detail` devuelve todos los eventos en orden                 | HU-09 #1, R-TRK-06 | `packages/api/src/modules/tracking/tracking.int.test.ts`     |
-| TRK-I02 | int   | Residente B consulta pedido de A → `NOT_FOUND`                                               | HU-09 #2           | `packages/api/src/modules/tracking/tracking.int.test.ts`     |
-| TRK-E01 | e2e   | Tras pagar, el detalle muestra «Pago validado» y la línea de tiempo                          | HU-09 #1           | `apps/e2e/src/mobile-web/resident-order.spec.ts`             |
-| TRK-E02 | e2e   | Residente no puede abrir el pedido de otra cuenta                                            | HU-09 #2           | `apps/e2e/src/mobile-web/access-denied.spec.ts`              |
+| ID      | Nivel | Caso                                                                                                                                                            | Criterio cubierto  | Archivo esperado                                             |
+| ------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------ |
+| TRK-U01 | unit  | Mapeo de línea de tiempo: orden ascendente, etiquetas en español, sin datos del actor                                                                           | HU-09 #1, R-TRK-02 | `packages/api/src/modules/tracking/tracking.service.test.ts` |
+| TRK-U02 | unit  | Pedido de otra cuenta → `NOT_FOUND` con el mismo mensaje que uno inexistente                                                                                    | HU-09 #2           | `packages/api/src/modules/tracking/tracking.service.test.ts` |
+| TRK-U03 | unit  | `mine` excluye borradores, ordena del más reciente y pagina                                                                                                     | R-TRK-04           | `packages/api/src/modules/tracking/tracking.service.test.ts` |
+| TRK-U04 | unit  | Cliente: helper de línea de tiempo (rol → «Tú»/«Sistema»/«Farmacia», fecha en hora de Chile)                                                                    | R-TRK-02           | `apps/mobile/src/features/orders/order-status-view.test.ts`  |
+| TRK-U05 | unit  | Cliente: al cambiar la persona con sesión (otra cuenta, sesión expirada o revocada) se vacía la caché de pedidos y carrito, también la del contador de la barra | HU-09 #2, D-10     | `apps/mobile/src/lib/session-cache.test.ts`                  |
+| TRK-I01 | int   | Pedido con varias transiciones: `detail` devuelve todos los eventos en orden                                                                                    | HU-09 #1, R-TRK-06 | `packages/api/src/modules/tracking/tracking.int.test.ts`     |
+| TRK-I02 | int   | Residente B consulta pedido de A → `NOT_FOUND`                                                                                                                  | HU-09 #2           | `packages/api/src/modules/tracking/tracking.int.test.ts`     |
+| TRK-E01 | e2e   | Tras pagar, el detalle muestra «Pago validado» y la línea de tiempo                                                                                             | HU-09 #1           | `apps/e2e/src/mobile-web/resident-order.spec.ts`             |
+| TRK-E02 | e2e   | Residente no puede abrir el pedido de otra cuenta                                                                                                               | HU-09 #2           | `apps/e2e/src/mobile-web/access-denied.spec.ts`              |
 
 ## 8. Trazabilidad
 
