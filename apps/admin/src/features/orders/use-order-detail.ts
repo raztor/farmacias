@@ -21,8 +21,8 @@ export type TransitionRequest = Readonly<{
 }>;
 
 /**
- * `operations.transition` (HU-08). Sends the version the operator is looking at
- * (`expectedVersion`): if someone changed the order first the API answers CONFLICT
+ * `operations.transition` (HU-08). Sends the version the operator decided on (`expectedVersion`,
+ * snapshot taken when the transition was picked): if someone changed the order first the API answers CONFLICT
  * (`STALE_VERSION`) and the detail is reloaded so only the transitions still allowed show up.
  * On success the cached detail is replaced and every queue page refreshed.
  */

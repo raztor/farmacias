@@ -19,8 +19,58 @@ describe("safeRedirectPath", () => {
     "/\\evil.example",
     "users",
     "",
-  ])("rejects the open redirect %s", (path) => {
+    "/\t/evil.example",
+    "/\n/evil.example",
+    "/\r/evil.example",
+    "/\t\t/evil.example/phish",
+    "/users\u0000",
+    "/users\u007f",
+  ])("rejects the open redirect %j", (path) => {
     expect(safeRedirectPath(path)).toBe(DEFAULT_AUTHENTICATED_PATH);
+  });
+
+  it("rejects control characters decoded from the query string (%09, %0A, %0D)", () => {
+    for (const encoded of ["%2F%09%2Fevil.example", "%2F%0A%2Fevil.example", "%2F%0D%2Fevil"]) {
+      const value = new URLSearchParams(`redirectTo=${encoded}`).get("redirectTo");
+
+      expect(safeRedirectPath(value)).toBe(DEFAULT_AUTHENTICATED_PATH);
+    }
+  });
+
+  it("only returns paths that stay on the current origin once resolved", () => {
+    const origin = "https://admin.farmacia.example.cl";
+    const candidates = ["/users", "/./users?q=1", "/a/../users#x", "/\t/evil.example"];
+
+    for (const candidate of candidates) {
+      expect(new URL(safeRedirectPath(candidate), `${origin}/sign-in`).origin).toBe(origin);
+    }
+  });
+
+  it.each([
+    "/.//evil.example",
+    "/..//evil.example/x",
+    "/a/..//evil.example",
+    "/%2e//evil.example",
+    "/%2E%2E//evil.example",
+    "/a/b/../..//evil.example?q=1#x",
+  ])("rejects %j, which normalizes to a protocol-relative path", (path) => {
+    expect(safeRedirectPath(path)).toBe(DEFAULT_AUTHENTICATED_PATH);
+  });
+
+  it("never returns a value that resolves to another origin", () => {
+    const origin = "https://admin.farmacia.example.cl";
+    const candidates = ["/.//evil.example", "/..//evil.example/x", "/%2e//evil.example", "/x"];
+
+    for (const candidate of candidates) {
+      const result = safeRedirectPath(candidate);
+
+      expect(result.startsWith("//")).toBe(false);
+      expect(new URL(result, `${origin}/sign-in`).origin).toBe(origin);
+    }
+  });
+
+  it("returns the normalized path", () => {
+    expect(safeRedirectPath("/a/../users?q=ana#top")).toBe("/users?q=ana#top");
   });
 
   it("falls back when the value is missing", () => {

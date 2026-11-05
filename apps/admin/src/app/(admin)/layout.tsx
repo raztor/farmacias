@@ -9,6 +9,7 @@ import {
   SignOutButton,
   getAdminAccess,
   getRequestPath,
+  getServerEnv,
   signInPathFor,
 } from "./_deps";
 
@@ -22,7 +23,14 @@ type AdminLayoutProps = Readonly<{ children: ReactNode }>;
 export default async function AdminLayout({ children }: AdminLayoutProps) {
   const access = await getAdminAccess();
   if (access.status === "signed-out") redirect(signInPathFor(await getRequestPath()));
-  if (access.status === "forbidden") return <ForbiddenScreen email={access.session.user.email} />;
+  if (access.status === "forbidden") {
+    return (
+      <ForbiddenScreen
+        email={access.session.user.email}
+        residentAppUrl={getServerEnv().RESIDENT_APP_URL}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col">

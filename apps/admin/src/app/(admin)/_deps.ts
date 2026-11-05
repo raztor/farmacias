@@ -12,6 +12,7 @@ export {
 } from "../../features/orders";
 export { StatsOverview } from "../../features/stats";
 export { UsersPanel } from "../../features/users";
+export { getServerEnv } from "../../env";
 export { getAdminAccess } from "../../lib/admin-access";
 export { getRequestPath } from "../../lib/request-path";
 export { signInPathFor } from "../../lib/safe-redirect";

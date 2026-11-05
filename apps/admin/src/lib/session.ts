@@ -4,7 +4,12 @@ import { z } from "zod";
 
 import { getServerEnv } from "../env";
 
-const SESSION_PATH = "/api/auth/get-session";
+/**
+ * `disableCookieCache`: Better Auth would otherwise answer from the signed `session_data` cookie
+ * (up to 5 minutes old) without reading the database, so a role change, ban or revoked session
+ * would not reach the back office until it expires (R-ACC-12). Same lookup as the API context.
+ */
+export const SESSION_PATH = "/api/auth/get-session?disableCookieCache=true";
 const SESSION_TIMEOUT_MS = 5_000;
 
 const serverSessionSchema = z
@@ -28,8 +33,8 @@ const serverSessionSchema = z
 export type ServerSession = NonNullable<z.output<typeof serverSessionSchema>>;
 
 /**
- * Session of the current request, resolved by the API (`GET /api/auth/get-session`) with the
- * incoming cookies. Returns `null` when signed out. Deduplicated per request with `cache`.
+ * Session of the current request, resolved by the API (`GET /api/auth/get-session`, always
+ * read from the database) with the incoming cookies. Returns `null` when signed out. Deduplicated per request with `cache`.
  *
  * Throws when the API is unreachable or answers unexpectedly, so the error boundary handles it
  * instead of silently treating the user as signed out.

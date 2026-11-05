@@ -1,39 +1,22 @@
 "use client";
 
-import type { OperationsOrderDetail, OperatorTarget } from "@repo/api";
-import { useRef, useState } from "react";
+import type { OperationsOrderDetail } from "@repo/api";
 
-import { getTrpcErrorMessage, isConflictError } from "../../lib/trpc-errors";
-import { transitionActionsFor } from "./transition-actions";
 import { TransitionButtons } from "./transition-buttons";
 import { TransitionConfirm } from "./transition-confirm";
-import { useTransitionOrder } from "./use-order-detail";
+import { useTransitionPanel } from "./use-transition-panel";
 
 type TransitionPanelProps = Readonly<{ order: OperationsOrderDetail }>;
 
 /**
  * "Registrar avance" (HU-08): one button per transition the API allows for this role and
- * modality — never any other — each going through {@link TransitionConfirm}. Errors stay in the
- * panel; on a version conflict the detail reloads and the confirmation closes.
+ * modality — never any other — each going through {@link TransitionConfirm}, which states the
+ * status and sends the version seen when the transition was picked (see
+ * {@link useTransitionPanel}). Errors, including "the order changed meanwhile", stay in the panel.
  */
 export function TransitionPanel({ order }: TransitionPanelProps) {
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const [selected, setSelected] = useState<OperatorTarget | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { transition, isPending } = useTransitionOrder();
-
-  const actions = transitionActionsFor(order.allowedTransitions);
-  const selectedAction = actions.find((action) => action.to === selected) ?? null;
-
-  const close = () => {
-    setSelected(null);
-    titleRef.current?.focus();
-  };
-
-  const onError = (cause: unknown) => {
-    setError(getTrpcErrorMessage(cause));
-    if (isConflictError(cause)) close();
-  };
+  const { titleRef, actions, view, error, isPending, select, confirm, close } =
+    useTransitionPanel(order);
 
   return (
     <section aria-labelledby="transition-title" className="flex flex-col gap-3">
@@ -53,26 +36,18 @@ export function TransitionPanel({ order }: TransitionPanelProps) {
           {error}
         </p>
       )}
-      {selectedAction === null ? (
-        <TransitionButtons
-          status={order.status}
-          actions={actions}
-          onSelect={(to) => {
-            setError(null);
-            setSelected(to);
-          }}
-        />
-      ) : (
+      {view.kind === "confirm" ? (
         <TransitionConfirm
-          order={order}
-          action={selectedAction}
+          order={{ code: order.code, status: view.selection.status }}
+          action={view.action}
           pending={isPending}
           onConfirm={(note) => {
-            setError(null);
-            transition({ order, to: selectedAction.to, note }, { onSuccess: close, onError });
+            confirm(view.selection, note);
           }}
           onCancel={close}
         />
+      ) : (
+        <TransitionButtons status={order.status} actions={actions} onSelect={select} />
       )}
     </section>
   );

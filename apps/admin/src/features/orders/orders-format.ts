@@ -7,8 +7,7 @@ import {
   type OrderStatus,
 } from "@repo/shared";
 
-/** Dates are stored in UTC and always shown in Chile's time (R-AUD-07, D-23). */
-export const DISPLAY_TIME_ZONE = "America/Santiago";
+import { DISPLAY_TIME_ZONE } from "../../lib/display-time-zone";
 
 const clpFormatter = new Intl.NumberFormat("es-CL", {
   style: "currency",

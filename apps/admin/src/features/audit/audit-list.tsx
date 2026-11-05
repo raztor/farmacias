@@ -3,16 +3,21 @@
 import { Button, Text } from "@repo/ui";
 
 import { QueryError } from "../../components/query-error";
+import { isLoadingCurrentResults } from "../../lib/list-loading";
 import { getTrpcErrorMessage } from "../../lib/trpc-errors";
 import { auditResultText, type AuditFilters } from "./audit-filters";
 import { AuditTable } from "./audit-table";
 import { useAuditList } from "./use-audit-list";
 
-/** Audit entries for the filters in the URL, with "Cargar más" (admin only). */
+/**
+ * Audit entries for the filters in the URL, with "Cargar más" (admin only). The live region never
+ * announces the previous filters' count while the new ones load.
+ */
 export function AuditList({ filters }: Readonly<{ filters: AuditFilters }>) {
   const query = useAuditList(filters);
   const entries = query.data?.pages.flatMap((page) => page.items) ?? [];
   const failed = query.isError && !query.isFetchNextPageError;
+  const loading = isLoadingCurrentResults(query);
 
   return (
     <section aria-labelledby="audit-results-title" className="flex flex-col gap-4">
@@ -20,7 +25,7 @@ export function AuditList({ filters }: Readonly<{ filters: AuditFilters }>) {
         Registros
       </h2>
       <Text role="status" variant="muted" aria-live="polite">
-        {failed ? "" : auditResultText(query.isPending, entries.length, filters)}
+        {failed ? "" : auditResultText(loading, entries.length, filters)}
       </Text>
       {failed ? (
         <QueryError
@@ -32,7 +37,7 @@ export function AuditList({ filters }: Readonly<{ filters: AuditFilters }>) {
         />
       ) : null}
       {entries.length > 0 ? (
-        <div aria-busy={query.isFetching}>
+        <div aria-busy={query.isFetching} className={loading ? "opacity-60" : undefined}>
           <AuditTable entries={entries} />
         </div>
       ) : null}

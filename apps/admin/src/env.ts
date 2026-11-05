@@ -25,6 +25,8 @@ const clientSchema = z.object({
 const serverSchema = z.object({
   NODE_ENV: nodeEnvSchema,
   API_INTERNAL_URL: z.url().transform((value) => value.replace(/\/+$/, "")),
+  /** Residents' app (Expo web export): the «Sin acceso» page links to it (R-ACC-07). Optional. */
+  RESIDENT_APP_URL: z.url({ protocol: /^https?$/ }).optional(),
 });
 
 export type ClientEnv = z.output<typeof clientSchema>;
