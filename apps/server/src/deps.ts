@@ -33,9 +33,17 @@ export const createInfrastructure = (env: ServerEnv, logger: Logger): Infrastruc
   return { db, queue, auth };
 };
 
+/** Trusted proxy addresses when listed (comma-separated, as Fastify expects), else the hops. */
+export const toTrustProxySetting = (
+  env: Pick<ServerEnv, "TRUST_PROXY_HOPS" | "TRUST_PROXY_ADDRESSES">,
+): number | string =>
+  env.TRUST_PROXY_ADDRESSES !== undefined && env.TRUST_PROXY_ADDRESSES.length > 0
+    ? env.TRUST_PROXY_ADDRESSES.join(",")
+    : env.TRUST_PROXY_HOPS;
+
 /** HTTP host settings derived from the validated environment. */
 export const createAppConfig = (env: ServerEnv): AppConfig => ({
   trustedOrigins: env.TRUSTED_ORIGINS,
   rateLimitMax: env.RATE_LIMIT_MAX,
-  trustProxy: env.TRUST_PROXY_HOPS,
+  trustProxy: toTrustProxySetting(env),
 });

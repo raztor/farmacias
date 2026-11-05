@@ -89,11 +89,16 @@ describe("createAuth", () => {
     expect(trustedOrigins).toEqual(["http://localhost:8081", "http://localhost:3001", "bnp://"]);
   });
 
-  it("registers the expo and admin plugins with the application roles", () => {
+  it("registers the HTTP allowlist, the per-account limit, expo and admin plugins", () => {
     const { plugins } = buildAuth().options;
     const adminPlugin = plugins.find((plugin) => plugin.id === "admin");
 
-    expect(plugins.map((plugin) => plugin.id)).toEqual(["expo", "admin"]);
+    expect(plugins.map((plugin) => plugin.id)).toEqual([
+      "http-allowlist",
+      "sign-in-account-limit",
+      "expo",
+      "admin",
+    ]);
     expect(adminPlugin?.options).toMatchObject({
       defaultRole: "resident",
       adminRoles: ["admin"],

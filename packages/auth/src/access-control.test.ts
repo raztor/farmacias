@@ -40,7 +40,15 @@ describe("AUTH_ROLES", () => {
     ["operator", { audit: ["read"] }, false],
     ["admin", { operations: ["transition"] }, true],
     ["admin", { users: ["set-role"], audit: ["read"] }, true],
-    ["admin", { user: ["create", "list", "set-role", "ban"] }, true],
+    ["admin", { user: ["create"] }, true],
+    ["admin", { user: ["set-role"] }, false],
+    ["admin", { user: ["list"] }, false],
+    ["admin", { user: ["update"] }, false],
+    ["admin", { user: ["delete"] }, false],
+    ["admin", { user: ["impersonate"] }, false],
+    ["admin", { user: ["set-password"] }, false],
+    ["admin", { user: ["ban"] }, false],
+    ["admin", { session: ["revoke"] }, false],
     ["admin", { order: ["create"] }, false],
   ] satisfies [Role, Permissions, boolean][])("%s → %j is %s", (role, permissions, expected) => {
     const result = AUTH_ROLES[role].authorize(permissions);
@@ -50,12 +58,18 @@ describe("AUTH_ROLES", () => {
 });
 
 describe("admin plugin permission checks", () => {
-  it("lets only admins manage accounts through the /admin endpoints", async () => {
-    const manageUsers: Permissions = { user: ["list", "set-role"] };
+  it("lets only admins create accounts through the admin plugin", async () => {
+    const createUsers: Permissions = { user: ["create"] };
 
-    await expect(hasPermission("admin", manageUsers)).resolves.toBe(true);
-    await expect(hasPermission("operator", manageUsers)).resolves.toBe(false);
-    await expect(hasPermission("resident", manageUsers)).resolves.toBe(false);
+    await expect(hasPermission("admin", createUsers)).resolves.toBe(true);
+    await expect(hasPermission("operator", createUsers)).resolves.toBe(false);
+    await expect(hasPermission("resident", createUsers)).resolves.toBe(false);
+  });
+
+  it("gives nobody the plugin's role change: only the audited admin.setRole changes roles", async () => {
+    for (const role of ["admin", "operator", "resident"] as const) {
+      await expect(hasPermission(role, { user: ["set-role"] })).resolves.toBe(false);
+    }
   });
 
   it("evaluates the domain statements with the same matrix as the API guards", async () => {

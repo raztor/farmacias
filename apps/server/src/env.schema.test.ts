@@ -43,6 +43,20 @@ describe("parseServerEnv", () => {
     ).toThrow(/BETTER_AUTH_SECRET[\s\S]*DATABASE_URL|DATABASE_URL[\s\S]*BETTER_AUTH_SECRET/);
   });
 
+  it("parses trusted proxy addresses (named ranges, IPs and CIDRs)", () => {
+    expect(parseServerEnv(VALID).TRUST_PROXY_ADDRESSES).toBeUndefined();
+    expect(
+      parseServerEnv({ ...VALID, TRUST_PROXY_ADDRESSES: "loopback, uniquelocal,10.1.2.3,fd00::/8" })
+        .TRUST_PROXY_ADDRESSES,
+    ).toEqual(["loopback", "uniquelocal", "10.1.2.3", "fd00::/8"]);
+  });
+
+  it("rejects an invalid trusted proxy address", () => {
+    expect(() =>
+      parseServerEnv({ ...VALID, TRUST_PROXY_ADDRESSES: "loopback,proxy.local" }),
+    ).toThrow(/TRUST_PROXY_ADDRESSES/);
+  });
+
   it("coerces numbers", () => {
     expect(parseServerEnv({ ...VALID, PORT: "8080", RATE_LIMIT_MAX: "50" })).toMatchObject({
       PORT: 8080,

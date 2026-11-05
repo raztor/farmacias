@@ -100,8 +100,10 @@ export type DemoOrderServices = {
 };
 
 export type DemoOrderStore = {
-  /** Orders past the draft owned by these residents (any means the demo already ran). */
+  /** Orders past the draft owned by these residents (the demo creates one per scenario). */
   countPlacedOrders: (residentIds: readonly string[]) => Promise<number>;
+  /** Lines in the drafts (carts) of these residents: left behind by a run that failed. */
+  countDraftLines: (residentIds: readonly string[]) => Promise<number>;
   /** Ids of active products with plenty of stock, in a stable order. */
   pickProducts: (count: number) => Promise<string[]>;
 };
@@ -171,37 +173,89 @@ const applyStep = async (
   return { ...placed, version: order.version, status: order.status };
 };
 
+const RESET_HINT = "reset the development database (pnpm db:reset) and run pnpm db:seed again";
+
 /**
- * Idempotent: when any demo resident already has a placed order, nothing is created (re-running
- * the seed never duplicates orders nor discounts stock again).
+ * The demo orders are only partly there (a previous run failed): re-running cannot repair them,
+ * because each scenario is several service transactions, so the seed stops instead of skipping.
  */
-export const seedDemoOrders = async ({
-  store,
-  services,
-  residentIds,
-  operatorId,
-  logger,
-  scenarios = DEMO_ORDER_SCENARIOS,
-}: SeedDemoOrdersOptions): Promise<SeedDemoOrdersResult> => {
-  if ((await store.countPlacedOrders(residentIds)) > 0) {
+export class DemoOrdersIncompleteError extends Error {
+  override readonly name = "DemoOrdersIncompleteError";
+}
+
+type RunContext = Omit<SeedDemoOrdersOptions, "store" | "scenarios"> & {
+  scenarios: readonly DemoOrderScenario[];
+  productIds: readonly string[];
+};
+
+const createScenarios = async (context: RunContext): Promise<number> => {
+  const { services, residentIds, operatorId, logger, scenarios, productIds } = context;
+  const operator: TransitionActor = { id: operatorId, role: "operator" };
+  let created = 0;
+  try {
+    for (const scenario of scenarios) {
+      const residentId = residentIds[scenario.resident];
+      let placed = await placeOrder(services, residentId, scenario, productIds);
+      for (const step of scenario.steps) {
+        placed = await applyStep(services, { residentId, operator }, placed, step);
+      }
+      created += 1;
+      logger.info({ orderId: placed.orderId, status: placed.status }, "Demo order created");
+    }
+  } catch (error) {
+    logger.error(
+      { err: error, created, expected: scenarios.length },
+      `Demo orders failed part-way: ${RESET_HINT}`,
+    );
+    throw error;
+  }
+  return created;
+};
+
+/** Throws when an earlier run left the demo orders (or a cart) half created. */
+const assertNotPartial = async (
+  store: DemoOrderStore,
+  residentIds: readonly string[],
+  placed: number,
+  expected: number,
+): Promise<void> => {
+  if (placed > 0) {
+    throw new DemoOrdersIncompleteError(
+      `Only ${String(placed)} of ${String(expected)} demo orders exist: ${RESET_HINT}`,
+    );
+  }
+  const draftLines = await store.countDraftLines(residentIds);
+  if (draftLines > 0) {
+    throw new DemoOrdersIncompleteError(
+      `Demo residents have ${String(draftLines)} cart lines left by a failed run: ${RESET_HINT}`,
+    );
+  }
+};
+
+/**
+ * Idempotent: when the demo residents already have at least one placed order per scenario,
+ * nothing is created (re-running the seed never duplicates orders nor discounts stock again;
+ * orders placed later through the apps only add to that count). A PARTIAL set (a run that failed
+ * between scenarios, or left a cart behind) fails loudly with {@link DemoOrdersIncompleteError}
+ * instead of being skipped silently forever.
+ */
+export const seedDemoOrders = async (
+  options: SeedDemoOrdersOptions,
+): Promise<SeedDemoOrdersResult> => {
+  const { store, residentIds, logger, scenarios = DEMO_ORDER_SCENARIOS } = options;
+  const placed = await store.countPlacedOrders(residentIds);
+  if (placed >= scenarios.length) {
     logger.info({ skipped: true }, "Demo orders already present, skipping");
     return { created: 0, skipped: true };
   }
+  await assertNotPartial(store, residentIds, placed, scenarios.length);
   const productIds = await store.pickProducts(DEMO_PRODUCT_COUNT);
   if (productIds.length < DEMO_PRODUCT_COUNT) {
     logger.warn({ found: productIds.length }, "Not enough stocked products for demo orders");
     return { created: 0, skipped: true };
   }
-  const operator: TransitionActor = { id: operatorId, role: "operator" };
-  for (const scenario of scenarios) {
-    const residentId = residentIds[scenario.resident];
-    let placed = await placeOrder(services, residentId, scenario, productIds);
-    for (const step of scenario.steps) {
-      placed = await applyStep(services, { residentId, operator }, placed, step);
-    }
-    logger.info({ orderId: placed.orderId, status: placed.status }, "Demo order created");
-  }
-  return { created: scenarios.length, skipped: false };
+  const created = await createScenarios({ ...options, scenarios, productIds });
+  return { created, skipped: false };
 };
 
 /** Minimum stock for a demo product, so the scenarios never hit a stock conflict. */
@@ -210,6 +264,10 @@ const DEMO_MIN_STOCK = 20;
 export const createDemoOrderStore = (db: PrismaClient): DemoOrderStore => ({
   countPlacedOrders: (residentIds) =>
     db.order.count({ where: { residentId: { in: [...residentIds] }, status: { not: "draft" } } }),
+  countDraftLines: (residentIds) =>
+    db.orderLine.count({
+      where: { order: { residentId: { in: [...residentIds] }, status: "draft" } },
+    }),
   pickProducts: async (count) => {
     const rows = await db.product.findMany({
       where: { active: true, inventory: { onHand: { gte: DEMO_MIN_STOCK } } },

@@ -64,6 +64,45 @@ describe("auth bridge (/api/auth/*)", () => {
     expect(seen).toEqual(["203.0.113.9", "203.0.113.9"]);
   });
 
+  describe("with trusted proxy addresses (TRUST_PROXY_ADDRESSES=loopback,uniquelocal)", () => {
+    const clientIpSeen = async (remoteAddress: string, forwardedFor: string) => {
+      const seen: (string | null)[] = [];
+      const { app } = await buildTestApp(
+        {
+          authHandler: (request) => {
+            seen.push(request.headers.get("x-forwarded-for"));
+            return Promise.resolve(Response.json({}));
+          },
+        },
+        { trustProxy: "loopback,uniquelocal" },
+      );
+      current = app;
+      await app.inject({
+        url: "/api/auth/get-session",
+        remoteAddress,
+        headers: { "x-forwarded-for": forwardedFor },
+      });
+      await app.close();
+      current = undefined;
+      return seen[0];
+    };
+
+    it("ignores the X-Forwarded-For of a client that reaches the port directly", async () => {
+      // With a hop count of 1 this request would get a fresh rate-limit bucket per spoofed IP.
+      await expect(clientIpSeen("198.51.100.7", "1.2.3.4")).resolves.toBe("198.51.100.7");
+    });
+
+    it("finds the client behind TLS proxy → admin (Next passes X-Forwarded-For through)", async () => {
+      await expect(clientIpSeen("10.0.0.7", "1.2.3.4, 203.0.113.9")).resolves.toBe("203.0.113.9");
+    });
+
+    it("finds the client behind TLS proxy → mobile-web (Caddy appends its peer)", async () => {
+      await expect(clientIpSeen("10.0.0.6", "1.2.3.4, 203.0.113.9, 10.0.0.5")).resolves.toBe(
+        "203.0.113.9",
+      );
+    });
+  });
+
   it("accepts form-encoded bodies untouched", async () => {
     let body = "";
     const app = await setupWithHandler(async (request) => {

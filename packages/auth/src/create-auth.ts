@@ -24,6 +24,8 @@ import {
   SESSION_POLICY,
 } from "./auth-config";
 import { toBetterAuthLogger } from "./auth-logger";
+import { authHttpAllowlist } from "./http-allowlist";
+import { signInAccountLimit } from "./sign-in-account-limit";
 import { createUserCreatedHook, type OnUserCreated } from "./user-created-hook";
 
 export type CreateAuthOptions = {
@@ -47,6 +49,9 @@ export type CreateAuthOptions = {
  * Creates the Better Auth server instance: email + password sign-in, Prisma persistence,
  * `expo()` for the mobile app and `admin()` with the app's access control (resident, operator,
  * admin).
+ *
+ * Only the endpoints in `AUTH_HTTP_PATHS` answer over HTTP (`authHttpAllowlist`), and sign-in is
+ * also rate-limited per account (`signInAccountLimit`), not only per IP.
  *
  * Public sign-up is disabled (`disableSignUp`): accounts are preregistered (seed or
  * `auth.api.createUser`), so `POST /api/auth/sign-up/email` always fails.
@@ -92,6 +97,8 @@ export function createAuth(options: CreateAuthOptions) {
     logger: toBetterAuthLogger(logger, options.isProduction),
     telemetry: { enabled: false },
     plugins: [
+      authHttpAllowlist(),
+      signInAccountLimit(),
       expo(),
       admin({
         ac: accessControl,

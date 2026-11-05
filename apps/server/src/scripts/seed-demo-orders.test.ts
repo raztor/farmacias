@@ -1,8 +1,9 @@
-import { noopLogger, type OrderStatus } from "@repo/shared";
+import { type AppLogger, noopLogger, type OrderStatus } from "@repo/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   DEMO_ORDER_SCENARIOS,
+  DemoOrdersIncompleteError,
   demoActorsFrom,
   seedDemoOrders,
   type DemoOrderServices,
@@ -79,10 +80,18 @@ const recordingServices = () => {
   return { services, calls };
 };
 
-const store = (placed = 0, products = PRODUCTS): DemoOrderStore => ({
+const store = (placed = 0, products = PRODUCTS, draftLines = 0): DemoOrderStore => ({
   countPlacedOrders: () => Promise.resolve(placed),
+  countDraftLines: () => Promise.resolve(draftLines),
   pickProducts: () => Promise.resolve(products),
 });
+
+const run = (
+  services: DemoOrderServices,
+  demoStore: DemoOrderStore,
+  logger: AppLogger = noopLogger,
+) =>
+  seedDemoOrders({ store: demoStore, services, residentIds: RESIDENTS, operatorId: "op", logger });
 
 describe("seedDemoOrders", () => {
   it("creates every scenario through the services, in order, with fresh versions", async () => {
@@ -130,17 +139,49 @@ describe("seedDemoOrders", () => {
     );
   });
 
-  it("is idempotent: does nothing when demo residents already have placed orders", async () => {
+  it("is idempotent: does nothing when every demo order already exists", async () => {
     const { services, calls } = recordingServices();
-    const result = await seedDemoOrders({
-      store: store(3),
-      services,
-      residentIds: RESIDENTS,
-      operatorId: "op",
-      logger: noopLogger,
+    const complete = DEMO_ORDER_SCENARIOS.length;
+
+    await expect(run(services, store(complete))).resolves.toEqual({ created: 0, skipped: true });
+    // Orders placed later through the apps only add to the count.
+    await expect(run(services, store(complete + 2))).resolves.toEqual({
+      created: 0,
+      skipped: true,
     });
-    expect(result).toEqual({ created: 0, skipped: true });
     expect(calls).toEqual([]);
+  });
+
+  it("fails loudly instead of skipping when a previous run left only some orders", async () => {
+    const { services, calls } = recordingServices();
+
+    await expect(run(services, store(3))).rejects.toThrow(DemoOrdersIncompleteError);
+    await expect(run(services, store(3))).rejects.toThrow(/3 of 8 demo orders.*db:reset/);
+    expect(calls).toEqual([]);
+  });
+
+  it("fails loudly when a failed run left lines in a demo resident's cart", async () => {
+    const { services, calls } = recordingServices();
+
+    await expect(run(services, store(0, PRODUCTS, 2))).rejects.toThrow(/2 cart lines.*db:reset/);
+    expect(calls).toEqual([]);
+  });
+
+  it("logs how far it got and rethrows when a scenario fails", async () => {
+    const { services } = recordingServices();
+    const failure = new Error("stock conflict");
+    vi.mocked(services.orders.confirm).mockImplementationOnce(() =>
+      Promise.resolve({ id: "o1", version: 1, status: "pending_payment" } as never),
+    );
+    vi.mocked(services.orders.confirm).mockRejectedValueOnce(failure);
+    const error = vi.fn();
+    const logger: AppLogger = { ...noopLogger, error, child: () => logger };
+
+    await expect(run(services, store(), logger)).rejects.toBe(failure);
+    expect(error).toHaveBeenCalledWith(
+      { err: failure, created: 1, expected: DEMO_ORDER_SCENARIOS.length },
+      expect.stringMatching(/failed part-way.*db:reset/) as unknown,
+    );
   });
 
   it("skips when the catalog lacks stocked products", async () => {

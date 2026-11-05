@@ -14,6 +14,15 @@ const urlWithProtocol = (protocol: RegExp, message: string) => z.url({ protocol,
 
 const httpUrl = urlWithProtocol(/^https?$/, "Expected an http(s) URL");
 
+/** Named ranges understood by Fastify's `trustProxy` (proxy-addr). */
+const PROXY_RANGE_NAMES = ["loopback", "linklocal", "uniquelocal"] as const;
+
+/** A trusted proxy: a named range, an IP address or a CIDR block. */
+const trustedProxyAddress = z.union(
+  [z.enum(PROXY_RANGE_NAMES), z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()],
+  { error: `Expected an IP, a CIDR or one of ${PROXY_RANGE_NAMES.join(", ")}` },
+);
+
 /** Variables needed before anything else loads (`instrument.ts`). */
 export const observabilityEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -36,6 +45,13 @@ export const serverEnvSchema = observabilityEnvSchema.extend({
   TRUSTED_ORIGINS: zCommaList.pipe(z.array(z.string().min(1)).min(1, "At least one origin")),
   /** Reverse proxies (load balancers) in front of the API; 0 when it is exposed directly. */
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(MAX_PROXY_HOPS).default(1),
+  /**
+   * Comma-separated proxy addresses to trust instead of a hop count, e.g.
+   * `loopback,uniquelocal`: the client IP is the right-most `X-Forwarded-For` entry that is not
+   * one of them, whatever the number of proxies on each route (TLS proxy → admin or mobile-web →
+   * server). Overrides `TRUST_PROXY_HOPS` when set.
+   */
+  TRUST_PROXY_ADDRESSES: zCommaList.pipe(z.array(trustedProxyAddress)).optional(),
   /** Requests per minute and client IP across the whole API. */
   RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(DEFAULT_RATE_LIMIT_MAX),
 });
