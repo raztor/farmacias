@@ -128,7 +128,7 @@ Implementados junto con el Bicep:
 1. **Caddyfile:** el proxy hacia la API reemplaza el `Host` por el nombre del upstream (`header_up Host {http.reverse_proxy.upstream.host}`), porque el ingress de Container Apps enruta por `Host`.
 2. **Admin:** el workflow lo construye con `API_INTERNAL_URL=http://ca-farm-server` (queda fijo en el build).
 3. **Conexiones:** Key Vault guarda `DATABASE_URL` con `sslmode=require` y `REDIS_URL=rediss://:<clave>@<host>:10000`.
-4. **Auth:** `BETTER_AUTH_URL` = URL de web, `TRUSTED_ORIGINS` = web, admin y `bnp://`. `TRUST_PROXY_ADDRESSES=loopback,uniquelocal` se mantiene porque los proxies de Azure usan IPs privadas de la VNet.
+4. **Auth:** `BETTER_AUTH_URL` = URL de web, `TRUSTED_ORIGINS` = web, admin y `bnp://`. `TRUST_PROXY_ADDRESSES=loopback,uniquelocal,100.64.0.0/10`: el ingress de Container Apps (Envoy) se conecta desde `100.64.0.0/10`, fuera de los rangos privados. Por la misma razón, Caddy confía en ese rango (`trusted_proxies`); si no, reemplaza el `X-Forwarded-For` del cliente por la IP del ingress.
 5. **Email:** `infra/scripts/bootstrap.sh` crea la app de Entra del usuario SMTP. `EMAIL_FROM` usa `DoNotReply@<dominio>.azurecomm.net`.
 6. **Suscripción:** `bootstrap.sh` registra el proveedor `Microsoft.Cache`.
 

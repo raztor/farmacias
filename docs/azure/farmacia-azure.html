@@ -892,9 +892,9 @@
           <b>Auth y orígenes</b>
           <p>
             <code>BETTER_AUTH_URL</code> = URL de web. <code>TRUSTED_ORIGINS</code> = web, admin y
-            <code>bnp://</code>. <code>TRUST_PROXY_ADDRESSES</code> se mantiene, porque los proxies
-            de Azure usan IPs privadas de la VNet. Después del despliegue hay que verificar que el
-            rate limiting vea la IP real del cliente.
+            <code>bnp://</code>. <code>TRUST_PROXY_ADDRESSES</code> y Caddy confían además en
+            <code>100.64.0.0/10</code>, el rango desde el que conecta el ingress de Container Apps.
+            Sin eso, el rate limiting trataría a todos los usuarios como una sola IP.
           </p>
         </li>
         <li>
