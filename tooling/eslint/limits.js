@@ -1,21 +1,21 @@
 /**
- * Límites de tamaño y complejidad del repositorio.
- * Fuente única: docs/REPO_RULES.md los documenta y ESLint los aplica como `error`.
- * Cambiarlos requiere un ADR (docs/adr).
+ * Size and complexity limits of the repository.
+ * Single source: docs/REPO_RULES.md documents them and ESLint enforces them as `error`.
+ * Changing them requires an ADR (docs/adr).
  */
 export const LIMITS = Object.freeze({
-  /** Líneas por archivo (sin contar líneas en blanco ni comentarios). */
+  /** Lines per file (blank lines and comments not counted). */
   maxLinesPerFile: 300,
-  /** Líneas por función o componente. */
+  /** Lines per function or component. */
   maxLinesPerFunction: 60,
-  /** Complejidad ciclomática por función. */
+  /** Cyclomatic complexity per function. */
   complexity: 12,
-  /** Bloques anidados (if/for/while/try) por función. */
+  /** Nested blocks (if/for/while/try) per function. */
   maxDepth: 4,
-  /** Parámetros por función (usar un objeto si se necesitan más). */
+  /** Parameters per function (use an object when more are needed). */
   maxParams: 4,
-  /** Callbacks anidados. */
+  /** Nested callbacks. */
   maxNestedCallbacks: 3,
-  /** Niveles de `../` permitidos en un import relativo. */
+  /** Levels of `../` allowed in a relative import. */
   maxParentImportDepth: 2,
 });

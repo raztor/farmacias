@@ -7,7 +7,7 @@ import { LIMITS } from "./limits.js";
 
 const parentImport = "../".repeat(LIMITS.maxParentImportDepth + 1);
 
-/** Reglas de tamaño/complejidad: ver docs/REPO_RULES.md §2. */
+/** Size/complexity rules: see docs/REPO_RULES.md §2. */
 const limitRules = {
   "max-lines": ["error", { max: LIMITS.maxLinesPerFile, skipBlankLines: true, skipComments: true }],
   "max-lines-per-function": [
@@ -36,8 +36,8 @@ const noDefaultExport = {
 };
 
 /**
- * Archivos donde el framework exige `export default` (rutas de Next.js / Expo Router,
- * stories y configs de herramientas). Las configs por plataforma pueden ampliar la lista.
+ * Files where the framework requires `export default` (Next.js / Expo Router routes,
+ * stories and tool configs). The platform configs may extend the list.
  */
 export const DEFAULT_EXPORT_ALLOWED = [
   "**/src/app/**/*.{ts,tsx}",
@@ -46,7 +46,7 @@ export const DEFAULT_EXPORT_ALLOWED = [
   "**/.storybook/**",
 ];
 
-/** Archivos que pueden leer `process.env` directamente (el resto usa el `env` validado). */
+/** Files that may read `process.env` directly (the rest use the validated `env`). */
 export const PROCESS_ENV_ALLOWED = [
   "**/env.ts",
   "**/instrument.ts",
@@ -56,7 +56,7 @@ export const PROCESS_ENV_ALLOWED = [
   "**/.storybook/**",
 ];
 
-/** Reglas de módulos e imports: ver docs/REPO_RULES.md §3. */
+/** Module and import rules: see docs/REPO_RULES.md §3. */
 const moduleRules = {
   "no-restricted-imports": [
     "error",
@@ -84,7 +84,7 @@ const moduleRules = {
   ],
 };
 
-/** Reglas de corrección y estilo de TypeScript. */
+/** TypeScript correctness and style rules. */
 const typescriptRules = {
   "no-console": "error",
   eqeqeq: ["error", "smart"],
@@ -133,7 +133,7 @@ export const base = defineConfig(
     rules: { ...limitRules, ...moduleRules, ...typescriptRules },
   },
   {
-    // Tests: se permite describir escenarios largos y anidados.
+    // Tests: long, nested scenarios are allowed.
     files: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/e2e/**/*.ts"],
     rules: {
       "max-lines-per-function": "off",
@@ -151,7 +151,7 @@ export const base = defineConfig(
     rules: { "no-restricted-properties": "off" },
   },
   {
-    // Archivos JS (configs de herramientas) no participan del type-checking.
+    // JS files (tool configs) are not type-checked.
     files: ["**/*.{js,cjs,mjs}"],
     extends: [tseslint.configs.disableTypeChecked],
     rules: { "@typescript-eslint/consistent-type-imports": "off" },

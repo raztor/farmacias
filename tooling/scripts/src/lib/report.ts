@@ -2,7 +2,7 @@ import { styleText } from "node:util";
 
 export type Finding = { workspace: string; message: string };
 
-/** Imprime el resultado de un chequeo y devuelve el exit code (0 = ok). */
+/** Prints the result of a check and returns the exit code (0 = ok). */
 export function report(title: string, findings: Finding[], details: string[] = []): number {
   const out = process.stdout;
   out.write(`${styleText("bold", title)}\n`);

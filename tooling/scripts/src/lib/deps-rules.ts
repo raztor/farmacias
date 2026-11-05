@@ -83,7 +83,7 @@ function checkManifest(ws: Workspace): Violation[] {
   return violations;
 }
 
-/** Entradas del catálogo que ningún workspace usa (deben eliminarse). */
+/** Catalog entries no workspace uses (they must be removed). */
 export function findUnusedCatalogEntries(
   workspaces: Workspace[],
   rootPkg: Workspace["pkg"],

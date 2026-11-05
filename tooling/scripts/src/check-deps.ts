@@ -1,5 +1,5 @@
 /**
- * `pnpm check:deps` — aplica la política de dependencias (docs/REPO_RULES.md §4).
+ * `pnpm check:deps` — enforces the dependency policy (docs/REPO_RULES.md §4).
  */
 import { join } from "node:path";
 
@@ -13,7 +13,7 @@ const rootAsWorkspace = { dir: REPO_ROOT, kind: "tooling" as const, pkg: rootPkg
 
 const violations = [
   ...workspaces.flatMap(checkWorkspace),
-  // La raíz solo valida especificadores (no aplica límites de cantidad ni scripts).
+  // The root only checks specifiers (no count limits, no scripts).
   ...checkWorkspace(rootAsWorkspace).filter((v) => v.message.includes("debe usar")),
   ...findUnusedCatalogEntries(workspaces, rootPkg, readCatalogNames()),
 ];

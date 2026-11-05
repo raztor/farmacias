@@ -5,7 +5,7 @@ import globals from "globals";
 
 import { base } from "./base.js";
 
-/** Código React compartido (packages/ui y base de las apps). */
+/** Shared React code (packages/ui and the base of the apps). */
 export const react = defineConfig(
   base,
   {
@@ -16,7 +16,7 @@ export const react = defineConfig(
   {
     languageOptions: { globals: { ...globals.browser } },
     rules: {
-      // Dependencias de hooks incompletas son bugs, no advertencias.
+      // Incomplete hook dependencies are bugs, not warnings.
       "react-hooks/exhaustive-deps": "error",
     },
   },

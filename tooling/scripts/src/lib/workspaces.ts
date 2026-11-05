@@ -30,7 +30,7 @@ export function readPackageJson(path: string): PackageJson {
   return JSON.parse(readFileSync(path, "utf8")) as PackageJson;
 }
 
-/** Lista los workspaces de apps/*, packages/* y tooling/* (los globs de pnpm-workspace.yaml). */
+/** Lists the workspaces of apps/*, packages/* and tooling/* (the pnpm-workspace.yaml globs). */
 export function listWorkspaces(root: string = REPO_ROOT): Workspace[] {
   return Object.entries(KIND_BY_FOLDER).flatMap(([folder, kind]) => {
     const base = join(root, folder);
@@ -43,7 +43,7 @@ export function listWorkspaces(root: string = REPO_ROOT): Workspace[] {
   });
 }
 
-/** Lee los nombres declarados en la sección `catalog:` de pnpm-workspace.yaml. */
+/** Reads the names declared in the `catalog:` section of pnpm-workspace.yaml. */
 export function readCatalogNames(root: string = REPO_ROOT): Set<string> {
   const lines = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8").split("\n");
   const names = new Set<string>();

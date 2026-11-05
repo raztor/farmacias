@@ -1,5 +1,5 @@
 /**
- * `pnpm check:naming` — valida nombres de archivos y carpetas en el código fuente.
+ * `pnpm check:naming` — checks the names of source files and folders.
  */
 import { readdirSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -8,7 +8,7 @@ import { isValidDirectoryName, isValidFileName } from "./lib/naming-rules.ts";
 import { report, type Finding } from "./lib/report.ts";
 import { listWorkspaces, REPO_ROOT } from "./lib/workspaces.ts";
 
-/** Carpetas de código fuente revisadas dentro de cada workspace. */
+/** Source folders checked inside each workspace. */
 const SOURCE_DIRS = ["src", "e2e", ".maestro"];
 const SKIPPED = new Set(["node_modules", "generated", "__snapshots__"]);
 

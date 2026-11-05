@@ -4,7 +4,7 @@ import globals from "globals";
 
 import { react } from "./react.js";
 
-/** Apps Next.js (admin). */
+/** Next.js apps (admin). */
 export const nextjs = defineConfig(react, nextPlugin.configs["core-web-vitals"], {
   languageOptions: { globals: { ...globals.node } },
 });

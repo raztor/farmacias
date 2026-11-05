@@ -1,6 +1,6 @@
 /**
- * `pnpm run setup` — crea los archivos .env locales a partir de cada .env.example
- * (sin sobrescribir los existentes) y genera secretos aleatorios donde dice "change-me".
+ * `pnpm run setup` — creates the local .env files from each .env.example (never overwriting
+ * existing ones) and generates random secrets wherever it says "change-me".
  */
 import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";

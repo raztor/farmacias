@@ -1,19 +1,19 @@
 /**
- * Política de dependencias del monorepo (docs/REPO_RULES.md §4).
- * Se aplica con `pnpm check:deps` en local y en CI.
+ * Dependency policy of the monorepo (docs/REPO_RULES.md §4).
+ * Enforced by `pnpm check:deps` locally and in CI.
  */
 
 export type WorkspaceKind = "app" | "package" | "tooling";
 
 export type DependencyLimits = {
-  /** Máximo de `dependencies` externas (no cuenta paquetes `@repo/*`). */
+  /** Maximum external `dependencies` (`@repo/*` packages not counted). */
   maxDependencies: number;
-  /** Máximo de `devDependencies` externas. */
+  /** Maximum external `devDependencies`. */
   maxDevDependencies: number;
 };
 
 export type LimitOverride = Partial<DependencyLimits> & {
-  /** Toda excepción debe estar justificada. */
+  /** Every exception must be justified. */
   reason: string;
 };
 
@@ -41,7 +41,7 @@ export const LIMIT_OVERRIDES: Record<string, LimitOverride> = {
   },
 };
 
-/** Paquetes prohibidos y la alternativa a usar. */
+/** Banned packages and the alternative to use. */
 export const BANNED_PACKAGES: Record<string, string> = {
   moment: "Usa Date/Intl nativos.",
   lodash: "Usa utilidades nativas de ES2024.",
@@ -58,7 +58,7 @@ export const BANNED_PACKAGES: Record<string, string> = {
   "@types/nodemailer": "nodemailer ya incluye sus tipos.",
 };
 
-/** Workspaces que no son código ejecutable y no requieren scripts lint/typecheck. */
+/** Workspaces that are not executable code and need no lint/typecheck scripts. */
 export const CONFIG_ONLY_WORKSPACES = new Set([
   "@repo/tsconfig",
   "@repo/prettier-config",

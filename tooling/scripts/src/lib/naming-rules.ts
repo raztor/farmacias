@@ -1,13 +1,13 @@
 /**
- * Convenciones de nombres de archivos y carpetas (docs/REPO_RULES.md §6).
- * Todo en kebab-case, con sufijos con punto: `user.service.ts`, `button.stories.tsx`.
- * Se permite la sintaxis de rutas de Next.js y Expo Router: `[id]`, `[...slug]`, `(group)`,
+ * Naming conventions of files and folders (docs/REPO_RULES.md §6).
+ * Everything in kebab-case, with dotted suffixes: `user.service.ts`, `button.stories.tsx`.
+ * The Next.js and Expo Router route syntax is allowed: `[id]`, `[...slug]`, `(group)`,
  * `@slot`, `_layout`, `+not-found`.
  */
 
 const KEBAB_SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/** Quita los adornos de sintaxis de rutas y devuelve el nombre "base". */
+/** Strips the route syntax decorations and returns the "base" name. */
 function stripRouteSyntax(name: string): string {
   return name
     .replace(/^\((.+)\)$/, "$1") // (group)
@@ -20,8 +20,8 @@ export function isValidDirectoryName(name: string): boolean {
 }
 
 export function isValidFileName(name: string): boolean {
-  if (name.startsWith(".")) return true; // dotfiles de configuración
-  // El stem puede ser una ruta catch-all con puntos internos: `[...slug].tsx`.
+  if (name.startsWith(".")) return true; // configuration dotfiles
+  // The stem may be a catch-all route with inner dots: `[...slug].tsx`.
   const match = /^(\[\[?\.\.\.[^\]]+\]\]?|[^.]+)\.(.+)$/.exec(name);
   if (!match) return false;
   const [, stem = "", rest = ""] = match;
