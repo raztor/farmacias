@@ -56,7 +56,8 @@ resource smtpRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 
 resource smtpUser 'Microsoft.Communication/communicationServices/smtpUsernames@2025-09-01' = {
   parent: communication
-  name: smtpUsername
+  // Azure rejects a username equal to the resource name.
+  name: 'smtp-${smtpUsername}'
   properties: {
     username: smtpUsername
     entraApplicationId: smtpEntraAppId

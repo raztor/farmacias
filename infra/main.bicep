@@ -1,8 +1,11 @@
 // Pre-production environment on Azure (deployed from the QA branch). See infra/README.md.
 targetScope = 'resourceGroup'
 
-@description('Region for the regional resources (the resource group itself may live elsewhere).')
-param location string = 'eastus2'
+@description('Region of the network, PostgreSQL, Redis and Container Apps. East US 2 rejects Burstable PostgreSQL for this subscription (SkuNotAvailable), so the workload runs in Central US.')
+param location string = 'centralus'
+
+@description('Region of the identity, Key Vault and Log Analytics (created first in East US 2; they work across regions).')
+param supportLocation string = 'eastus2'
 
 @description('Short environment name, used in tags.')
 param environmentName string = 'qa'
@@ -103,13 +106,13 @@ module network 'modules/network.bicep' = {
 
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
-  params: { location: location, tags: tags, workspaceName: names.logs }
+  params: { location: supportLocation, tags: tags, workspaceName: names.logs }
 }
 
 module security 'modules/security.bicep' = {
   name: 'security'
   params: {
-    location: location
+    location: supportLocation
     tags: tags
     identityName: names.identity
     keyVaultName: names.keyVault

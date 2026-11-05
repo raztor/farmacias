@@ -1,6 +1,6 @@
 # Infraestructura de pre-producción (Azure, rama `QA`)
 
-Bicep y scripts del ambiente de pre-producción descrito en [`docs/azure/README.md`](../docs/azure/README.md). Todo se crea en el resource group `rg-farmacia-bm` (región de los recursos: East US 2). `main` queda reservada para producción, que tendrá su propio resource group.
+Bicep y scripts del ambiente de pre-producción descrito en [`docs/azure/README.md`](../docs/azure/README.md). Todo se crea en el resource group `rg-farmacia-bm` (red, PostgreSQL, Redis y Container Apps en Central US; Key Vault, identidad y Log Analytics en East US 2). `main` queda reservada para producción, que tendrá su propio resource group.
 
 ## Archivos
 

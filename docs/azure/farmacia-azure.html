@@ -453,7 +453,7 @@
       </div>
       <div>
         <dt>Región</dt>
-        <dd>East US 2</dd>
+        <dd>Central US</dd>
       </div>
       <div>
         <dt>IaC</dt>
@@ -511,7 +511,7 @@
           <!-- zones -->
           <rect class="z-vnet" x="214" y="36" width="652" height="560" rx="10" />
           <text class="zl" x="228" y="58">vnet-farmacia-bm · 10.40.0.0/16</text>
-          <text class="zl" x="852" y="58" text-anchor="end">East US 2</text>
+          <text class="zl" x="852" y="58" text-anchor="end">Central US</text>
           <rect class="z-env" x="234" y="70" width="612" height="352" rx="8" />
           <text class="zl" x="248" y="92">cae-farmacia-bm · Container Apps (Consumption)</text>
           <text class="zl" x="832" y="92" text-anchor="end">snet-aca · /27</text>
@@ -802,7 +802,7 @@
         </table>
       </div>
       <p class="note">
-        Precios de lista aproximados de East US 2, a confirmar en la calculadora de Azure (en
+        Precios de lista aproximados de Central US, a confirmar en la calculadora de Azure (en
         especial Redis B0). Un presupuesto de Cost Management sobre el RG avisa a los dueños de la
         suscripción al 50, 80 y 100 % de US$ 80.
       </p>
@@ -892,9 +892,9 @@
           <b>Auth y orígenes</b>
           <p>
             <code>BETTER_AUTH_URL</code> = URL de web. <code>TRUSTED_ORIGINS</code> = web, admin y
-            <code>bnp://</code>. <code>TRUST_PROXY_ADDRESSES</code> se mantiene, porque los proxies
-            de Azure usan IPs privadas de la VNet. Después del despliegue hay que verificar que el
-            rate limiting vea la IP real del cliente.
+            <code>bnp://</code>. <code>TRUST_PROXY_ADDRESSES</code> y Caddy confían además en
+            <code>100.64.0.0/10</code>, el rango desde el que conecta el ingress de Container Apps.
+            Sin eso, el rate limiting trataría a todos los usuarios como una sola IP.
           </p>
         </li>
         <li>
@@ -952,10 +952,10 @@
           <p>B1ms admite ~35 conexiones de usuario. Por eso el server tiene máximo 1 réplica.</p>
         </li>
         <li>
-          <b>Ubicación del resource group</b>
+          <b>Región</b>
           <p>
-            rg-farmacia-bm está en East US y los recursos van en East US 2. Funciona, pero los
-            metadatos del RG quedan en otra región.
+            La suscripción no permite PostgreSQL Burstable en East US 2, así que red, datos y apps
+            van en Central US. Key Vault, identidad y logs quedaron en East US 2.
           </p>
         </li>
       </ul>
