@@ -25,7 +25,9 @@ const hasUniqueValues = (values: readonly string[]): boolean =>
   new Set(values).size === values.length;
 
 describe("domain value lists", () => {
-  it("match the values allowed by the database CHECK constraints", () => {
+  // Snapshot of the published values (clients and stored rows depend on them). Parity with the
+  // database CHECK constraints is tested in @repo/db (schema-parity.test.ts / .int.test.ts).
+  it("keep their published values", () => {
     expect(ORDER_STATUSES).toEqual([
       "draft",
       "pending_payment",

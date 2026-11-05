@@ -1,19 +1,4 @@
-/**
- * Product categories accepted by the CHECK `products_category_check`.
- *
- * Mirrors `PRODUCT_CATEGORIES` of @repo/shared. @repo/db does not depend on @repo/shared yet,
- * so the list is repeated here; `catalog-data.test.ts` checks it against the migration SQL.
- */
-export const SEED_CATEGORIES = [
-  "cardiovascular",
-  "salud-mental",
-  "analgesicos",
-  "suplementos",
-  "digestivo",
-  "otros",
-] as const;
-
-export type SeedCategory = (typeof SEED_CATEGORIES)[number];
+import type { ProductCategory } from "@repo/shared";
 
 /** `[presentation, brand price in CLP]` of one sellable variant. */
 export type VariantSpec = readonly [presentation: string, priceClp: number];
@@ -34,7 +19,7 @@ export type CatalogSeedProduct = {
   commercialName: string;
   activeIngredient: string;
   presentation: string;
-  category: SeedCategory;
+  category: ProductCategory;
   priceClp: number;
   onHand: number;
   lowStockThreshold: number;

@@ -20,14 +20,11 @@ export {
 } from "./generated/prisma/client";
 export {
   CATALOG_CATEGORIES,
-  SEED_CATEGORIES,
   buildCatalogProducts,
   seedCatalog,
   type CatalogSeedClient,
   type CatalogSeedProduct,
   type CategoryCatalog,
-  type SearchTextSource,
   type SeedCatalogOptions,
   type SeedCatalogResult,
-  type SeedCategory,
 } from "./seed";

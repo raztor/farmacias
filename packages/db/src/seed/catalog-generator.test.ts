@@ -1,25 +1,6 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
+import { describe, expect, it } from "vitest";
 
 import { buildCategoryProducts, stableHash, stockForSku, toShelfPrice } from "./catalog-generator";
-
-await test("toShelfPrice rounds to a price ending in 90 with a 990 floor", () => {
-  assert.equal(toShelfPrice(6990), 6990);
-  assert.equal(toShelfPrice(3844.5), 3790);
-  assert.equal(toShelfPrice(100), 990);
-});
-
-await test("stableHash is deterministic and spreads values", () => {
-  assert.equal(stableHash("CAR-LOS-B1"), stableHash("CAR-LOS-B1"));
-  assert.notEqual(stableHash("CAR-LOS-B1"), stableHash("CAR-LOS-B2"));
-});
-
-await test("stockForSku is never negative", () => {
-  for (let index = 0; index < 1000; index += 1) {
-    const stock = stockForSku(`SKU-${index}`);
-    assert.ok(Number.isInteger(stock) && stock >= 0 && stock <= 150);
-  }
-});
 
 const SPEC = {
   category: "digestivo",
@@ -39,19 +20,39 @@ const SPEC = {
   ],
 } as const;
 
-await test("buildCategoryProducts interleaves ingredients and creates brand + generic", () => {
-  const result = buildCategoryProducts(SPEC);
-  assert.deepEqual(
-    result.map((product) => product.sku),
-    ["DIG-AAA-B1", "DIG-BBB-B1", "DIG-AAA-G1"],
-  );
-  const generic = result[2];
-  assert.ok(generic);
-  assert.equal(generic.commercialName, "Uno Cordillera");
-  assert.equal(generic.priceClp, 1090);
-  assert.ok(result.every((product) => product.category === "digestivo"));
-});
+describe("catalog generator", () => {
+  it("toShelfPrice rounds to a price ending in 90 with a 990 floor", () => {
+    expect(toShelfPrice(6990)).toBe(6990);
+    expect(toShelfPrice(3844.5)).toBe(3790);
+    expect(toShelfPrice(100)).toBe(990);
+  });
 
-await test("buildCategoryProducts throws when the specs cannot reach the target", () => {
-  assert.throws(() => buildCategoryProducts({ ...SPEC, target: 7 }), /yields 6 products/);
+  it("stableHash is deterministic and spreads values", () => {
+    expect(stableHash("CAR-LOS-B1")).toBe(stableHash("CAR-LOS-B1"));
+    expect(stableHash("CAR-LOS-B1")).not.toBe(stableHash("CAR-LOS-B2"));
+  });
+
+  it("stockForSku is never negative", () => {
+    for (let index = 0; index < 1000; index += 1) {
+      const stock = stockForSku(`SKU-${String(index)}`);
+      expect(Number.isInteger(stock) && stock >= 0 && stock <= 150).toBe(true);
+    }
+  });
+
+  it("buildCategoryProducts interleaves ingredients and creates brand + generic", () => {
+    const result = buildCategoryProducts(SPEC);
+    expect(result.map((product) => product.sku)).toEqual([
+      "DIG-AAA-B1",
+      "DIG-BBB-B1",
+      "DIG-AAA-G1",
+    ]);
+    const generic = result[2];
+    expect(generic?.commercialName).toBe("Uno Cordillera");
+    expect(generic?.priceClp).toBe(1090);
+    expect(result.every((product) => product.category === "digestivo")).toBe(true);
+  });
+
+  it("buildCategoryProducts throws when the specs cannot reach the target", () => {
+    expect(() => buildCategoryProducts({ ...SPEC, target: 7 })).toThrow(/yields 6 products/);
+  });
 });

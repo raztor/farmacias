@@ -5,8 +5,10 @@
 // names are what the Better Auth Prisma adapter addresses (user, session, account,
 // verification, rateLimit); tables and columns are mapped to snake_case.
 //
+// Every DateTime is `timestamptz(3)` in UTC, auth models included (D-23, R-DAT-01).
+//
 // Domain models (catalog, inventory, orders, payments, audit) live below the auth models; see
-// docs/specs/datos.md. Statuses, categories, reasons and roles are stored as TEXT guarded by
+// docs/specs/data-model.md. Statuses, categories, reasons and roles are stored as TEXT guarded by
 // CHECK constraints (no Prisma enums, see the migration SQL); their TypeScript unions live in
 // @repo/shared (ORDER_STATUSES, PRODUCT_CATEGORIES...), so clients never import @repo/db.
 
@@ -33,14 +35,14 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false) @map("email_verified")
   image         String?
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   // admin plugin
   // Better Auth may store several comma-separated roles, so there is no CHECK here.
   role          String    @default("resident")
   banned        Boolean   @default(false)
   banReason     String?   @map("ban_reason")
-  banExpires    DateTime? @map("ban_expires")
+  banExpires    DateTime? @map("ban_expires") @db.Timestamptz(3)
 
   sessions Session[]
   accounts Account[]
@@ -55,10 +57,10 @@ model User {
 
 model Session {
   id             String   @id
-  expiresAt      DateTime @map("expires_at")
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
   token          String   @unique
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   ipAddress      String?  @map("ip_address")
   userAgent      String?  @map("user_agent")
   userId         String   @map("user_id")
@@ -79,12 +81,12 @@ model Account {
   accessToken           String?   @map("access_token")
   refreshToken          String?   @map("refresh_token")
   idToken               String?   @map("id_token")
-  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
   scope                 String?
   password              String?
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -96,9 +98,9 @@ model Verification {
   id         String   @id
   identifier String
   value      String
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([identifier])
   @@map("verification")
@@ -213,6 +215,9 @@ model Order {
   totalClp                 Int      @default(0) @map("total_clp")
   /// Compare-and-set guard for status transitions.
   version                  Int      @default(0)
+  /// When the order was placed. While draft it is when the cart was opened; the trigger
+  /// `orders_stamp_placement` re-stamps it when the order leaves draft (confirm), so the FIFO
+  /// queue, "Mis pedidos" and the creation date follow placement order (R-DAT-11).
   createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 

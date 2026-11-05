@@ -1,70 +1,69 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
+import { buildProductSearchText } from "@repo/shared";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import type { PrismaClient } from "../generated/prisma/client";
 import { TEST_DATABASE_URL } from "../testing/env";
-import { createTestDatabase } from "../testing/test-database";
+import { createTestDatabase, type TestDatabase } from "../testing/test-database";
 import { buildCatalogProducts } from "./catalog-data";
-import { seedCatalog, type SearchTextSource } from "./seed-catalog";
+import { seedCatalog } from "./seed-catalog";
 
-const skip = TEST_DATABASE_URL ? false : "TEST_DATABASE_URL no definida";
+describe.skipIf(!TEST_DATABASE_URL)("seedCatalog on PostgreSQL", () => {
+  let testDb: TestDatabase | undefined;
+  let db: PrismaClient;
 
-// The real normalization (accents, punctuation) is tested in @repo/shared; any deterministic
-// builder proves the seed stores what it is given.
-const buildSearchText = (product: SearchTextSource): string =>
-  `${product.commercialName} ${product.activeIngredient} ${product.presentation}`.toLowerCase();
+  beforeAll(async () => {
+    testDb = await createTestDatabase(TEST_DATABASE_URL ?? "");
+    db = testDb.db;
+  });
 
-await test("seedCatalog on PostgreSQL", { skip }, async (t) => {
-  if (!TEST_DATABASE_URL) return;
-  const testDb = await createTestDatabase(TEST_DATABASE_URL);
-  const { db } = testDb;
-  try {
-    await t.test("seedCatalog creates every product with its inventory row", async () => {
-      const expected = buildCatalogProducts();
-      const result = await seedCatalog(db, { buildSearchText });
-      assert.deepEqual(result, { created: expected.length, updated: 0, total: expected.length });
-      assert.equal(await db.product.count(), expected.length);
-      assert.equal(await db.inventoryItem.count(), expected.length);
+  afterAll(async () => {
+    await testDb?.drop();
+  });
 
-      const sample = expected[0];
-      assert.ok(sample);
-      const stored = await db.product.findUniqueOrThrow({
-        where: { sku: sample.sku },
-        include: { inventory: true },
-      });
-      assert.equal(stored.priceClp, sample.priceClp);
-      assert.equal(stored.searchText, buildSearchText(sample));
-      assert.equal(stored.inventory?.onHand, sample.onHand);
+  it("creates every product with its inventory row and normalized search text", async () => {
+    const expected = buildCatalogProducts();
+    const result = await seedCatalog(db);
+    expect(result).toEqual({ created: expected.length, updated: 0, total: expected.length });
+    expect(await db.product.count()).toBe(expected.length);
+    expect(await db.inventoryItem.count()).toBe(expected.length);
+
+    const sample = expected[0];
+    if (!sample) throw new Error("empty catalog");
+    const stored = await db.product.findUniqueOrThrow({
+      where: { sku: sample.sku },
+      include: { inventory: true },
+    });
+    expect(stored.priceClp).toBe(sample.priceClp);
+    expect(stored.searchText).toBe(buildProductSearchText(sample));
+    expect(stored.inventory?.onHand).toBe(sample.onHand);
+  });
+
+  it("is idempotent and never resets stock", async () => {
+    const sample = buildCatalogProducts()[1];
+    if (!sample) throw new Error("empty catalog");
+    const product = await db.product.findUniqueOrThrow({ where: { sku: sample.sku } });
+    await db.inventoryItem.update({
+      where: { productId: product.id },
+      data: { onHand: sample.onHand + 7 },
     });
 
-    await t.test("seedCatalog is idempotent and never resets stock", async () => {
-      const sample = buildCatalogProducts()[1];
-      assert.ok(sample);
-      const product = await db.product.findUniqueOrThrow({ where: { sku: sample.sku } });
-      await db.inventoryItem.update({
-        where: { productId: product.id },
-        data: { onHand: sample.onHand + 7 },
-      });
-
-      const second = await seedCatalog(db, { buildSearchText });
-      assert.equal(second.created, 0);
-      assert.equal(second.updated, second.total);
-      assert.equal(await db.product.count(), second.total);
-      assert.equal(await db.inventoryItem.count(), second.total);
-      const inventory = await db.inventoryItem.findUniqueOrThrow({
-        where: { productId: product.id },
-      });
-      assert.equal(inventory.onHand, sample.onHand + 7);
+    const second = await seedCatalog(db);
+    expect(second.created).toBe(0);
+    expect(second.updated).toBe(second.total);
+    expect(await db.product.count()).toBe(second.total);
+    expect(await db.inventoryItem.count()).toBe(second.total);
+    const inventory = await db.inventoryItem.findUniqueOrThrow({
+      where: { productId: product.id },
     });
+    expect(inventory.onHand).toBe(sample.onHand + 7);
+  });
 
-    await t.test("the trigram index serves accent-free ILIKE searches", async () => {
-      const rows = await db.product.findMany({
-        where: { searchText: { contains: "pregabalina" } },
-        select: { activeIngredient: true },
-      });
-      assert.ok(rows.length >= 4);
-      assert.ok(rows.every((row) => row.activeIngredient === "Pregabalina"));
+  it("stores accent-free search text served by the trigram index", async () => {
+    const rows = await db.product.findMany({
+      where: { searchText: { contains: "losartan" } },
+      select: { activeIngredient: true },
     });
-  } finally {
-    await testDb.drop();
-  }
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+    expect(rows.every((row) => row.activeIngredient.startsWith("Losartán"))).toBe(true);
+  });
 });

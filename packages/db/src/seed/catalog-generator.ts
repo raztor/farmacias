@@ -1,4 +1,6 @@
-import type { CatalogSeedProduct, IngredientSpec, SeedCategory } from "./catalog-types";
+import type { ProductCategory } from "@repo/shared";
+
+import type { CatalogSeedProduct, IngredientSpec } from "./catalog-types";
 
 /** Synthetic laboratories used for the generic (unbranded) version of each ingredient. */
 const GENERIC_LABS = ["Cordillera", "Quillay", "Macul", "Los Presidentes", "Andino"] as const;
@@ -71,7 +73,7 @@ function interleave<T>(lists: readonly (readonly T[])[]): T[] {
 }
 
 export type CategoryCatalog = {
-  category: SeedCategory;
+  category: ProductCategory;
   /** SKU prefix, e.g. "CAR". */
   prefix: string;
   /** Exact number of products to generate for the category. */
