@@ -64,7 +64,11 @@ fi
 log "Entra app for GitHub Actions (OIDC)"
 DEPLOY_APP_ID="$(ensure_app farmacia-qa-github-deploy)"
 DEPLOY_SP_ID="$(az ad sp show --id "$DEPLOY_APP_ID" --query id -o tsv)"
-SUBJECT="repo:${REPO}:environment:${GH_ENV}"
+# GitHub's OIDC subject may include owner and repository ids (immutable subject); ask GitHub
+# for the exact prefix instead of assuming `repo:<owner>/<repo>`.
+SUB_PREFIX="$(gh api "repos/$REPO/actions/oidc/customization/sub" --jq '.sub_claim_prefix // empty' 2>/dev/null || true)"
+SUBJECT="${SUB_PREFIX:-repo:${REPO}}:environment:${GH_ENV}"
+echo "OIDC subject: $SUBJECT"
 if [[ -z "$(az ad app federated-credential list --id "$DEPLOY_APP_ID" --query "[?subject=='$SUBJECT'].name" -o tsv)" ]]; then
   az ad app federated-credential create --id "$DEPLOY_APP_ID" --parameters "{
     \"name\": \"github-${GH_ENV}\",

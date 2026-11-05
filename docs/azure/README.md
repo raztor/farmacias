@@ -53,7 +53,9 @@ flowchart LR
 
 ## Recursos
 
-Región **East US 2**. El resource group `rg-farmacia-bm` ya existe (su metadata está en East US).
+Región **Central US** para la red, PostgreSQL, Redis y Container Apps. Key Vault, la identidad y Log Analytics quedaron en East US 2 (funcionan entre regiones). El resource group `rg-farmacia-bm` ya existía (su metadata está en East US).
+
+El plan original era East US 2, pero esta suscripción no permite PostgreSQL Burstable ahí (`SkuNotAvailable` en todas las zonas y también con B2s) y East US está restringida. Se probó B1ms en otras regiones y está disponible en Central US, South Central US, North Central US, West US 2 y Canada Central. Se eligió Central US por precio similar a East US 2.
 
 | Recurso                   | Nombre                               | SKU / configuración                                                  |
 | ------------------------- | ------------------------------------ | -------------------------------------------------------------------- |
@@ -90,7 +92,7 @@ Azure Cache for Redis está en retiro y ya no permite crear cachés nuevas, por 
 | **Total en modo ahorro**                      | **≈ 50–60** |
 | Modo demo (server, admin y web con 1 réplica) |     ≈ 70–85 |
 
-Precios de lista aproximados de East US 2, a confirmar en la calculadora de Azure. El tope acordado es US$ 100/mes.
+Precios de lista aproximados de Central US, a confirmar en la calculadora de Azure. El tope acordado es US$ 100/mes.
 
 ## Flujo de release
 
@@ -126,7 +128,7 @@ Implementados junto con el Bicep:
 1. **Caddyfile:** el proxy hacia la API reemplaza el `Host` por el nombre del upstream (`header_up Host {http.reverse_proxy.upstream.host}`), porque el ingress de Container Apps enruta por `Host`.
 2. **Admin:** el workflow lo construye con `API_INTERNAL_URL=http://ca-farm-server` (queda fijo en el build).
 3. **Conexiones:** Key Vault guarda `DATABASE_URL` con `sslmode=require` y `REDIS_URL=rediss://:<clave>@<host>:10000`.
-4. **Auth:** `BETTER_AUTH_URL` = URL de web, `TRUSTED_ORIGINS` = web, admin y `bnp://`. `TRUST_PROXY_ADDRESSES=loopback,uniquelocal` se mantiene porque los proxies de Azure usan IPs privadas de la VNet.
+4. **Auth:** `BETTER_AUTH_URL` = URL de web, `TRUSTED_ORIGINS` = web, admin y `bnp://`. `TRUST_PROXY_ADDRESSES=loopback,uniquelocal,100.64.0.0/10`: el ingress de Container Apps (Envoy) se conecta desde `100.64.0.0/10`, fuera de los rangos privados. Por la misma razón, Caddy confía en ese rango (`trusted_proxies`); si no, reemplaza el `X-Forwarded-For` del cliente por la IP del ingress.
 5. **Email:** `infra/scripts/bootstrap.sh` crea la app de Entra del usuario SMTP. `EMAIL_FROM` usa `DoNotReply@<dominio>.azurecomm.net`.
 6. **Suscripción:** `bootstrap.sh` registra el proveedor `Microsoft.Cache`.
 

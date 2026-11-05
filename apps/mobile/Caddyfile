@@ -12,8 +12,10 @@
 	auto_https off
 	persist_config off
 	# TLS terminates at the reverse proxy in front of this container: trust its X-Forwarded-*.
+	# 100.64.0.0/10 is the Azure Container Apps ingress (Envoy); without it Caddy would replace the
+	# client's X-Forwarded-For with the ingress address.
 	servers {
-		trusted_proxies static private_ranges
+		trusted_proxies static private_ranges 100.64.0.0/10
 	}
 }
 

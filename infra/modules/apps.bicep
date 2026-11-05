@@ -52,9 +52,9 @@ module server 'container-app.bicep' = {
       { name: 'PORT', value: '4000' }
       secretEnv('REDIS_URL', 'redis-url')
       { name: 'TRUST_PROXY_HOPS', value: '1' }
-      // Every proxy in front of the server (Container Apps ingress, Caddy) has a private VNet IP,
-      // so the client IP is the right-most public entry of X-Forwarded-For (R-ACC-09).
-      { name: 'TRUST_PROXY_ADDRESSES', value: 'loopback,uniquelocal' }
+      // The Container Apps ingress (Envoy) connects from 100.64.0.0/10 and the apps from the VNet,
+      // so the client IP is the right-most entry of X-Forwarded-For outside those (R-ACC-09).
+      { name: 'TRUST_PROXY_ADDRESSES', value: 'loopback,uniquelocal,100.64.0.0/10' }
       { name: 'RATE_LIMIT_MAX', value: '300' }
     ])
     probes: probes.server
