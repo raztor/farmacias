@@ -17,7 +17,7 @@ const ADMIN_LANE_OFFSET = 8;
  * horizontal scroll. Order status is shown as text plus a symbol, never only as a color.
  */
 test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
-  test("inicio de sesión, bandeja, detalle, confirmación, usuarios, catálogo y auditoría", async ({
+  test("inicio de sesión, bandeja, detalle, confirmación, usuarios, catálogo, auditoría e inventario", async ({
     page,
     publicApi,
     newResident,
@@ -78,6 +78,18 @@ test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
     await test.step("auditoría (solo administración)", async () => {
       await page.goto("/audit");
       await check("admin-auditoria", page.getByRole("heading", { level: 1, name: "Auditoría" }));
+    });
+
+    await test.step("inventario y ficha de stock (HU-10)", async () => {
+      await page.goto(`/inventory?q=${encodeURIComponent(product.commercialName)}`);
+      await check("admin-inventario", page.locator(`a[href="/inventory/${product.id}"]`));
+      await page.goto(`/inventory/${product.id}`);
+      const form = page.getByRole("form", { name: "Registrar recepción o ajuste" });
+      await check("admin-ficha-stock", form);
+      // Errors are announced and tied to their field (SC 3.3.1, 4.1.3).
+      await form.getByRole("button", { name: "Registrar recepción" }).click();
+      await expect(form.getByLabel("Cantidad de unidades")).toHaveAttribute("aria-invalid", "true");
+      await check("admin-ficha-stock-errores", form.getByRole("alert").first());
     });
 
     expect(problems, problems.join("\n")).toEqual([]);

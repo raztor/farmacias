@@ -6,6 +6,13 @@ export { AuditFiltersForm, AuditList, parseAuditFilters } from "../../features/a
 export { ForbiddenScreen, SignOutButton } from "../../features/auth";
 export { EditProduct, NEW_PRODUCT_PATH, NewProduct, ProductsPanel } from "../../features/catalog";
 export {
+  InventoryFiltersForm,
+  InventoryList,
+  ProductStock,
+  inventorySearch,
+  parseInventoryFilters,
+} from "../../features/inventory";
+export {
   OrderDetail,
   OrdersQueue,
   QueueFiltersForm,
