@@ -11,15 +11,23 @@ import { useEffect, useRef, useState, type KeyboardEvent, type SubmitEvent } fro
 
 import { ButtonLink } from "../../components/button-link";
 import { useForm, type UseFormResult } from "../../lib/use-form";
-import { CATALOG_PATH } from "./catalog-format";
+import { CATALOG_PATH, isCheckboxEnter } from "./catalog-format";
 import { ActiveCheckbox, CategorySelect } from "./product-form-controls";
 import { productFormSchema, type ProductFormValues } from "./product-form.schema";
 
 type ProductFormState = UseFormResult<ProductFormValues, ProductFields>;
 
-/** Text fields and category of the product, two columns from `sm` up. */
-function ProductFieldsGrid({ form }: Readonly<{ form: ProductFormState }>) {
-  const { values, errors, setField, fieldProps: textField } = form;
+type ProductFieldsGridProps = Readonly<{ form: ProductFormState; onSubmitEditing: () => void }>;
+
+/** Text fields and category of the product, two columns from `sm` up. Enter saves. */
+function ProductFieldsGrid({ form, onSubmitEditing }: ProductFieldsGridProps) {
+  const { values, errors, setField, fieldProps } = form;
+  // react-native-web's TextInput stops the propagation of every keydown, so the form never sees
+  // Enter from a text field: each field reports it through `onSubmitEditing` instead.
+  const textField = (field: keyof ProductFormValues) => ({
+    ...fieldProps(field),
+    onSubmitEditing,
+  });
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
       <Input
@@ -121,11 +129,11 @@ export function ProductForm(props: ProductFormProps) {
     submit();
   };
 
-  // Enter in any text field or in the «Producto activo» box saves (the select keeps Enter for its
-  // own list). One handler for the whole form, so a key press never submits twice.
+  // Enter in the «Producto activo» box saves too. Text fields never reach this handler (their
+  // keydown does not propagate, see `ProductFieldsGrid`), so a key press never submits twice; the
+  // select keeps Enter for its own list.
   const onKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
-    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-    if (!(event.target instanceof HTMLInputElement)) return;
+    if (!isCheckboxEnter(event.key, event.target, event.nativeEvent.isComposing)) return;
     event.preventDefault();
     submit();
   };
@@ -139,7 +147,7 @@ export function ProductForm(props: ProductFormProps) {
       onKeyDown={onKeyDown}
       className="flex max-w-2xl flex-col gap-5 rounded-lg border border-border bg-card p-4 sm:p-6"
     >
-      <ProductFieldsGrid form={form} />
+      <ProductFieldsGrid form={form} onSubmitEditing={submit} />
       <ActiveCheckbox
         checked={form.values.active === "true"}
         onChange={(checked) => {

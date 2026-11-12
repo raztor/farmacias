@@ -33,6 +33,16 @@ export function isNewerVersion(
   return latest.updatedAt.getTime() > base.updatedAt.getTime();
 }
 
+/**
+ * Whether a keydown reaching the product form should save it: Enter on a native checkbox (text
+ * fields save through `onSubmitEditing`; selects keep Enter for their list). Not while an IME
+ * composition is in progress.
+ */
+export function isCheckboxEnter(key: string, target: EventTarget | null, composing: boolean) {
+  if (key !== "Enter" || composing || typeof target !== "object" || target === null) return false;
+  return "type" in target && target.type === "checkbox";
+}
+
 /** Success toast after saving a product. */
 export function productSavedMessage(name: string, kind: "created" | "updated"): string {
   return kind === "created" ? `Producto «${name}» creado.` : `Cambios de «${name}» guardados.`;

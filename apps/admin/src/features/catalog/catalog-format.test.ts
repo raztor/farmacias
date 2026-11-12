@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   categoryLabel,
+  isCheckboxEnter,
   isNewerVersion,
   productHref,
   productSavedMessage,
@@ -29,6 +30,16 @@ describe("catalog-format", () => {
     expect(isNewerVersion(base, { updatedAt: new Date("2026-11-01T12:00:00.001Z") })).toBe(true);
     expect(isNewerVersion(base, { updatedAt: new Date("2026-11-01T12:00:00.000Z") })).toBe(false);
     expect(isNewerVersion(base, { updatedAt: new Date("2026-11-01T11:59:59.999Z") })).toBe(false);
+  });
+
+  it("saves on Enter only from the checkbox (text fields use onSubmitEditing)", () => {
+    const checkbox = { type: "checkbox" } as unknown as EventTarget;
+    const select = { type: "select-one" } as unknown as EventTarget;
+    expect(isCheckboxEnter("Enter", checkbox, false)).toBe(true);
+    expect(isCheckboxEnter("Enter", checkbox, true)).toBe(false);
+    expect(isCheckboxEnter(" ", checkbox, false)).toBe(false);
+    expect(isCheckboxEnter("Enter", select, false)).toBe(false);
+    expect(isCheckboxEnter("Enter", null, false)).toBe(false);
   });
 
   it("names the product in the success message", () => {
