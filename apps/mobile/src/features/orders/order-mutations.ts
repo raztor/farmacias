@@ -51,10 +51,20 @@ export function repeatOrderOptions({
     onError,
     onSuccess: ({ draft, changes }) => {
       queryClient.setQueryData(trpc.orders.draft.queryKey(), draft);
-      const notice: RepeatNotice = { orderCode: order.code, lineCount: order.lineCount, changes };
+      const notice: RepeatNotice = {
+        orderCode: order.code,
+        draftId: draft?.id ?? null,
+        lineCount: order.lineCount,
+        changes,
+      };
       queryClient.setQueryData(REPEAT_NOTICE_KEY, notice);
       void queryClient.invalidateQueries(trpc.catalog.pathFilter());
       onRepeated();
     },
   });
+}
+
+/** Drops the "Repetir pedido" notice (e.g. once its cart was confirmed, HU-14). */
+export function clearRepeatNotice(queryClient: Pick<QueryClient, "setQueryData">): void {
+  queryClient.setQueryData<RepeatNotice | null>(REPEAT_NOTICE_KEY, null);
 }

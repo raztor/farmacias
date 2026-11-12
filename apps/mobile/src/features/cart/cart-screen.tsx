@@ -64,6 +64,13 @@ function CartBody() {
   return <CartContent draft={draft.data} />;
 }
 
+/** HU-14: the "Repetir pedido" changes, once the current cart is known (it belongs to one cart). */
+function CartRepeatNotice() {
+  const draft = useDraft();
+  if (!draft.isSuccess) return null;
+  return <RepeatOrderNotice draftId={draft.data?.id ?? null} />;
+}
+
 /** «Mi pedido» (HU-03): the draft order with quantities, subtotals and total. */
 export function CartScreen() {
   return (
@@ -76,7 +83,7 @@ export function CartScreen() {
       </View>
       <RequireSignIn title="Inicia sesión para ver tu pedido">
         <View className="gap-4">
-          <RepeatOrderNotice />
+          <CartRepeatNotice />
           <CartBody />
         </View>
       </RequireSignIn>

@@ -3,8 +3,8 @@ import { useRouter } from "expo-router";
 
 import { reportUnexpectedApiError } from "../../lib/report-error";
 import { useTRPC } from "../../lib/trpc";
-import { cancelOrderOptions, repeatOrderOptions } from "./order-mutations";
-import { REPEAT_NOTICE_KEY, type RepeatNotice } from "./repeat-notice";
+import { cancelOrderOptions, clearRepeatNotice, repeatOrderOptions } from "./order-mutations";
+import { noticeForDraft, REPEAT_NOTICE_KEY, type RepeatNotice } from "./repeat-notice";
 
 export const MY_ORDERS_PAGE_SIZE = 20;
 
@@ -43,8 +43,11 @@ export function useRepeatOrder(order: Readonly<{ code: string; lineCount: number
   );
 }
 
-/** The notice of the last "Repetir pedido" (`null` when there is none or it was dismissed). */
-export function useRepeatNotice() {
+/**
+ * The notice of the last "Repetir pedido" for the current cart (`draftId`): `null` when there is
+ * none, it was dismissed, or it belongs to another cart (confirmed or replaced since).
+ */
+export function useRepeatNotice(draftId: string | null) {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: REPEAT_NOTICE_KEY,
@@ -53,9 +56,9 @@ export function useRepeatNotice() {
     staleTime: Infinity,
   });
   const dismiss = () => {
-    queryClient.setQueryData<RepeatNotice | null>(REPEAT_NOTICE_KEY, null);
+    clearRepeatNotice(queryClient);
   };
-  return { notice: query.data, dismiss };
+  return { notice: noticeForDraft(query.data, draftId), dismiss };
 }
 
 /** Owner cancellation; refreshes the orders and the catalog after any answer (see options). */

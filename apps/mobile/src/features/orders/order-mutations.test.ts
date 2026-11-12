@@ -5,7 +5,7 @@ import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import superjson from "superjson";
 import { describe, expect, it } from "vitest";
 
-import { cancelOrderOptions, repeatOrderOptions } from "./order-mutations";
+import { cancelOrderOptions, clearRepeatNotice, repeatOrderOptions } from "./order-mutations";
 import { REPEAT_NOTICE_KEY } from "./repeat-notice";
 
 const HTTP_CONFLICT = 409;
@@ -143,10 +143,15 @@ describe("repeatOrderOptions (HU-14)", () => {
     expect(queryClient.getQueryData(trpc.orders.draft.queryKey())).toEqual(REPEAT_RESULT.draft);
     expect(queryClient.getQueryData(REPEAT_NOTICE_KEY)).toEqual({
       orderCode: "P-000100",
+      draftId: "draft-1",
       lineCount: 2,
       changes: REPEAT_RESULT.changes,
     });
     expect(repeated).toBe(1);
+
+    // Confirming that cart clears it (use-checkout), so it never shows over a later cart.
+    clearRepeatNotice(queryClient);
+    expect(queryClient.getQueryData(REPEAT_NOTICE_KEY)).toBeNull();
     queryClient.clear();
   });
 });
