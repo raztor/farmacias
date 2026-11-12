@@ -2,7 +2,14 @@ import type { TimelineEntry } from "@repo/api";
 import { ORDER_STATUSES } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 
-import { actorLabel, canCancel, canPay, statusTone, toTimelineItems } from "./order-status-view";
+import {
+  actorLabel,
+  canCancel,
+  canPay,
+  canRepeat,
+  statusTone,
+  toTimelineItems,
+} from "./order-status-view";
 
 const plain = (text: string) => text.replace(/\s/gu, " ");
 
@@ -30,6 +37,12 @@ describe("canPay / canCancel", () => {
     const cancellable = ORDER_STATUSES.filter(canCancel);
 
     expect(cancellable).toEqual(["pending_payment", "payment_validated", "payment_rejected"]);
+  });
+
+  it("offers «Repetir pedido» for every placed order but not the draft (HU-14)", () => {
+    expect(ORDER_STATUSES.filter((status) => !canRepeat(status))).toEqual(["draft"]);
+    expect(ORDER_STATUSES.filter(canPay).every(canRepeat)).toBe(true);
+    expect(ORDER_STATUSES.filter(canCancel).every(canRepeat)).toBe(true);
   });
 });
 
