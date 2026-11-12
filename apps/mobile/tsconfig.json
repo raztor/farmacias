@@ -10,5 +10,5 @@
     "allowJs": false,
     "types": ["expo/types"]
   },
-  "include": ["src", "*.ts", "nativewind-env.d.ts", "expo-env.d.ts", ".expo/types/**/*.ts"]
+  "include": ["src", "*.ts", "nativewind-env.d.ts"]
 }

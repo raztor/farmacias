@@ -3,7 +3,10 @@ import { Platform } from "react-native";
 import { z } from "zod";
 
 const apiUrlSchema = z
-  .httpUrl({ error: "EXPO_PUBLIC_API_URL must be an http(s) URL" })
+  .url({
+    protocol: /^https?$/,
+    error: "EXPO_PUBLIC_API_URL must be an http(s) URL",
+  })
   .transform((url) => url.replace(/\/+$/, ""));
 
 /**
