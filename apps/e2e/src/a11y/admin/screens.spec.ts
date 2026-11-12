@@ -17,7 +17,7 @@ const ADMIN_LANE_OFFSET = 8;
  * horizontal scroll. Order status is shown as text plus a symbol, never only as a color.
  */
 test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
-  test("inicio de sesión, bandeja, detalle, confirmación, usuarios, auditoría e inventario", async ({
+  test("inicio de sesión, bandeja, detalle, confirmación, usuarios, catálogo, auditoría e inventario", async ({
     page,
     publicApi,
     newResident,
@@ -60,6 +60,19 @@ test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
       await page.goto("/users");
       await check("admin-usuarios", page.getByRole("heading", { level: 1, name: "Usuarios" }));
       await expect(page.getByRole("combobox", { name: /^Rol de / }).first()).toBeVisible();
+    });
+
+    await test.step("catálogo: listado, nuevo producto y edición (HU-11, solo administración)", async () => {
+      await page.goto("/catalog");
+      const list = page.getByRole("heading", { level: 1, name: "Catálogo" });
+      await check("admin-catalogo", list);
+      // Status as text (SC 1.4.1): «Activo» / «Inactivo» in each row, never color only.
+      await expect(page.getByRole("row").nth(1)).toContainText(/Activo|Inactivo/);
+      await page.goto("/catalog/new");
+      await check("admin-catalogo-nuevo", page.getByRole("form", { name: "Nuevo producto" }));
+      // Viewing only (never saved): the lane product keeps its data and price.
+      await page.goto(`/catalog/${product.id}`);
+      await check("admin-catalogo-editar", page.getByRole("button", { name: "Guardar cambios" }));
     });
 
     await test.step("auditoría (solo administración)", async () => {
