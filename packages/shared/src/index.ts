@@ -37,6 +37,19 @@ export {
   type ProductCategory,
   type SearchableProduct,
   type StockMovementReason,
+  CALENDAR_DAY_MAX_YEAR,
+  CALENDAR_DAY_MIN_YEAR,
+  INVALID_DAY_MESSAGE,
+  RANGE_ORDER_MESSAGE,
+  RANGE_SPAN_MESSAGE,
+  REPORT_DEFAULT_RANGE_DAYS,
+  REPORT_MAX_RANGE_DAYS,
+  addCalendarDays,
+  calendarRangeLength,
+  isCalendarDay,
+  reportRangeProblem,
+  type ReportRangeField,
+  type ReportRangeProblem,
 } from "./domain";
 export { createEnv, formatEnvIssues, zBooleanString, zCommaList, type EnvSource } from "./env";
 export {
