@@ -4,6 +4,7 @@ import {
   cancelInput,
   confirmInput,
   removeItemInput,
+  repeatInput,
   setFulfillmentInput,
   setQuantityInput,
 } from "./orders.schema";
@@ -46,6 +47,11 @@ export const ordersProcedures = {
   cancel: ordersProcedure
     .input(cancelInput)
     .mutation(({ ctx, input }) => ctx.orders.cancel({ ...input, residentId: ctx.user.id })),
+
+  // HU-14: adds a previous own order's products to the draft and reports what changed (D-30).
+  repeat: ordersProcedure
+    .input(repeatInput)
+    .mutation(({ ctx, input }) => ctx.orders.repeat({ ...input, residentId: ctx.user.id })),
 };
 
 export const ordersRouter = createRouter(ordersProcedures);
