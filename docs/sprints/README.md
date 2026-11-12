@@ -1,11 +1,12 @@
 # Entregas de sprint
 
-Material de cada Sprint Review según la guía del curso (informe, tablero actualizado, repositorio, diagramas y video de 5 minutos como máximo). Cada sprint tiene un informe y un guion de video. La evidencia gráfica está en [`evidencia/`](./evidencia).
+Material de cada Sprint Review según la guía del curso (informe, tablero actualizado, repositorio, diagramas y video de 5 minutos como máximo). Cada sprint tiene un informe; los Sprints 1 y 2 tienen además un guion de video (el video del Sprint 3 no forma parte de la tarea T-15). La evidencia gráfica está en [`evidencia/`](./evidencia).
 
 | Sprint   | Informe                      | Guion del video                                      | Issue                                                |
 | -------- | ---------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
 | Sprint 1 | [sprint-1.md](./sprint-1.md) | [sprint-1-guion-video.md](./sprint-1-guion-video.md) | [#30](https://github.com/raztor/farmacias/issues/30) |
 | Sprint 2 | [sprint-2.md](./sprint-2.md) | [sprint-2-guion-video.md](./sprint-2-guion-video.md) | [#36](https://github.com/raztor/farmacias/issues/36) |
+| Sprint 3 | [sprint-3.md](./sprint-3.md) | —                                                    | [#44](https://github.com/raztor/farmacias/issues/44) |
 
 La prueba de usabilidad (T-11, [#34](https://github.com/raztor/farmacias/issues/34)) está en [`docs/validation/usabilidad.md`](../validation/usabilidad.md).
 
