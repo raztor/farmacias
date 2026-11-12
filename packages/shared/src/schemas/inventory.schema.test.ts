@@ -62,6 +62,7 @@ describe("stockAdjustmentSchema", () => {
     [{ ...VALID, delta: 10_001 }, "La cantidad admite hasta 10.000 unidades por movimiento."],
     [{ ...VALID, kind: "sale" }, "Elige si es una recepción o un ajuste."],
     [{ ...VALID, productId: " " }, "Selecciona un producto."],
+    [{ ...VALID, productId: "p".repeat(65) }, "Identificador de producto demasiado largo."],
     [{ ...VALID, reason: "" }, "Indica el motivo (al menos 5 caracteres)."],
   ])("rejects %j", (input, message) => {
     expect(firstMessage(input)).toBe(message);

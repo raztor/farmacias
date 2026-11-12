@@ -250,7 +250,7 @@ describe("inventory reads", () => {
       { take: 3, cursor: undefined, term: "acido 500", sku: "Ácido 500", onlyLow: true },
     ]);
     expect(result.items).toHaveLength(2);
-    expect(result.nextCursor).toBe("p-b");
+    expect(result.nextCursor).toBe(JSON.stringify(["Producto p-b", "p-b"]));
     expect(result.items[1]).toMatchObject({ productId: "p-b", level: "out" });
   });
 

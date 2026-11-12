@@ -19,6 +19,7 @@ import {
   createInventoryAdminServiceFromDeps,
 } from "./inventory-admin.service";
 import { createInventoryStore } from "./inventory.repository";
+import { listInventoryInput } from "./inventory.schema";
 import { discountForOrder } from "./inventory.service";
 
 /** INV-I07..INV-I12 (docs/specs/inventory.md): HU-10 and HU-12 on PostgreSQL. */
@@ -194,7 +195,9 @@ describe.skipIf(!INTEGRATION_ENABLED)("back-office inventory on PostgreSQL", () 
       "Aspirina Prueba",
       "Betametasona Prueba",
     ]);
-    const second = await service().list({ limit: 2, cursor: first.nextCursor ?? undefined });
+    const second = await service().list(
+      listInventoryInput.parse({ limit: 2, cursor: first.nextCursor ?? undefined }),
+    );
     expect(second.items.map((item) => item.name)).toEqual(["Cetirizina Prueba"]);
     expect(second.nextCursor).toBeNull();
 
