@@ -36,6 +36,8 @@ Mantención del catálogo (HU-11, Sprint 3):
 15. **R-CAT-15.** El cambio se refleja de inmediato en el catálogo público: `search_text` se recalcula en cada alta y edición con `buildProductSearchText`, igual que el seed (R-CAT-02). `catalog.adminList` lista activos e inactivos por nombre comercial, con filtro de estado (`all` · `active` · `inactive`) y por texto: cada palabra normalizada debe aparecer en `search_text` o en el SKU. _(RF-14)_
 16. **R-CAT-16.** Cada alta escribe `product.create` (`before: null`, `after`: producto) y cada edición `product.update` (producto antes / después: `sku`, nombres, presentación, categoría, `priceClp`, `active`), en la **misma transacción** que el cambio y con la fila del producto bloqueada (`FOR UPDATE`) para que el «antes» sea exacto. Guardar sin cambios no escribe ni audita. _(RF-12, RNF-07, D-22, D-28)_
 17. **R-CAT-17.** Un cambio de precio no altera pedidos ya confirmados: cada línea guarda su `unit_price_clp` (D-16); los borradores toman el precio vigente al confirmar (R-ORD-11). _(D-16, D-28)_
+18. **R-CAT-18.** Concurrencia optimista: `catalog.update` recibe el `updatedAt` del producto que el administrador cargó (`expectedUpdatedAt`). Si otra persona guardó antes, responde `CONFLICT` («El producto cambió mientras lo editabas. Recarga para ver los cambios.») sin escribir nada. El formulario edita la versión cargada al abrir la página (una recarga en segundo plano no borra lo que se está escribiendo) y ofrece «Cargar la versión actual». _(RNF-07, D-28)_
+19. **R-CAT-19.** El seed del catálogo solo inserta los productos que faltan: nunca modifica uno existente (datos, precio, estado ni stock), para no revertir sin auditoría lo que el administrador cambió. _(D-28, RNF-07)_
 
 Categorías terapéuticas (lista cerrada, `as const`): `cardiovascular`, `salud-mental`, `analgesicos`, `suplementos`, `digestivo`, `otros`.
 
@@ -59,12 +61,12 @@ No existe el borrado.
 
 Mantención (HU-11, solo `admin`; sin sesión `UNAUTHORIZED`, otros roles `FORBIDDEN`):
 
-| Procedimiento       | Tipo     | Entrada                                                                                                         | Salida                                                  | Errores                                            |
-| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
-| `catalog.adminList` | query    | `{ q?: string (trim, 0..100), status?: "all" \| "active" \| "inactive" = "all", cursor?, limit?: 1..100 = 20 }` | `{ items: AdminProduct[], nextCursor: string \| null }` | `BAD_REQUEST`                                      |
-| `catalog.adminById` | query    | `{ id: string }`                                                                                                | `AdminProduct` (activo o no)                            | `BAD_REQUEST`, `NOT_FOUND`                         |
-| `catalog.create`    | mutation | `ProductFields` (R-CAT-13)                                                                                      | `AdminProduct` (`onHand: 0`, umbral por defecto)        | `BAD_REQUEST`, `CONFLICT` (SKU usado)              |
-| `catalog.update`    | mutation | `{ id: string } & ProductFields`                                                                                | `AdminProduct`                                          | `BAD_REQUEST`, `NOT_FOUND`, `CONFLICT` (SKU usado) |
+| Procedimiento       | Tipo     | Entrada                                                                                                         | Salida                                                  | Errores                                                                               |
+| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `catalog.adminList` | query    | `{ q?: string (trim, 0..100), status?: "all" \| "active" \| "inactive" = "all", cursor?, limit?: 1..100 = 20 }` | `{ items: AdminProduct[], nextCursor: string \| null }` | `BAD_REQUEST`                                                                         |
+| `catalog.adminById` | query    | `{ id: string }`                                                                                                | `AdminProduct` (activo o no)                            | `BAD_REQUEST`, `NOT_FOUND`                                                            |
+| `catalog.create`    | mutation | `ProductFields` (R-CAT-13)                                                                                      | `AdminProduct` (`onHand: 0`, umbral por defecto)        | `BAD_REQUEST`, `CONFLICT` (SKU usado)                                                 |
+| `catalog.update`    | mutation | `{ id: string, expectedUpdatedAt: Date } & ProductFields`                                                       | `AdminProduct`                                          | `BAD_REQUEST`, `NOT_FOUND`, `CONFLICT` (SKU usado o versión desactualizada, R-CAT-18) |
 
 ```ts
 type ProductFields = {
@@ -101,7 +103,7 @@ type ProductSummary = {
 
 API interna para otros módulos (vía `index.ts`): ninguna. Pedidos lee precio y disponibilidad a través de su propio repositorio y del módulo de inventario.
 
-Backoffice (`apps/admin/src/features/catalog`, rutas `/catalog`, `/catalog/new`, `/catalog/[id]`): tabla con precio en CLP, stock y estado en texto («Activo» / «Inactivo»), búsqueda y filtro de estado; formulario validado con el mismo schema, categoría en un `select` nativo, casilla «Producto activo» y avisos de éxito o error.
+Backoffice (`apps/admin/src/features/catalog`, rutas `/catalog`, `/catalog/new`, `/catalog/[id]`): tabla con precio en CLP, stock y estado en texto («Activo» / «Inactivo»), búsqueda y filtro de estado; formulario validado con el mismo schema (el precio acepta solo dígitos o miles con punto, como `6990` o `6.990`; `19.90` o `1990.50` se rechazan), categoría en un `select` nativo, casilla «Producto activo» y avisos de éxito o error. Un SKU repetido se muestra en su campo; tras un error el foco va al primer campo inválido y Enter guarda desde cualquier campo de texto o la casilla.
 
 ## 6. Datos
 
@@ -109,7 +111,7 @@ Backoffice (`apps/admin/src/features/catalog`, rutas `/catalog`, `/catalog/new`,
 
 Disponibilidad: `inventory_items` (ver [Inventario](./inventory.md)), relación 1:1 por `product_id`.
 
-Seed (T-02, #25): ≥ 200 productos sintéticos con la distribución del informe (cardiovascular ~26 %, salud mental ~22 %, analgésicos ~14 %, suplementos ~9 %, digestivo ~8 %, otros ~21 %), incluye los principios más demandados (pregabalina 75/150 mg, melatonina 3 mg, multivitamínico, celecoxib 200 mg, losartán 50 mg, escitalopram 10/20 mg), precios CLP realistas, algunos con stock 0, algunos con stock bajo (≤ 5) y la mayoría normal. Idempotente (upsert por `sku`).
+Seed (T-02, #25): ≥ 200 productos sintéticos con la distribución del informe (cardiovascular ~26 %, salud mental ~22 %, analgésicos ~14 %, suplementos ~9 %, digestivo ~8 %, otros ~21 %), incluye los principios más demandados (pregabalina 75/150 mg, melatonina 3 mg, multivitamínico, celecoxib 200 mg, losartán 50 mg, escitalopram 10/20 mg), precios CLP realistas, algunos con stock 0, algunos con stock bajo (≤ 5) y la mayoría normal. Idempotente: inserta por `sku` solo los productos que faltan y nunca modifica uno existente (R-CAT-19).
 
 ## 7. Casos de prueba
 
@@ -136,7 +138,8 @@ Seed (T-02, #25): ≥ 200 productos sintéticos con la distribución del informe
 | CAT-I07 | int   | SKU duplicado (alta o edición) → `CONFLICT` sin escrituras ni auditoría                                                                                                                                              | R-CAT-13           | `packages/api/src/modules/catalog/catalog-admin.int.test.ts`                                                                                                                         |
 | CAT-I08 | int   | Desactivar: sale de la búsqueda pública y `byId` → `NOT_FOUND`; sigue en `adminList` (filtros por nombre, SKU, estado y cursor)                                                                                      | R-CAT-14, R-CAT-15 | `packages/api/src/modules/catalog/catalog-admin.int.test.ts`                                                                                                                         |
 | CAT-I09 | int   | Pedido confirmado conserva su precio tras el cambio; el borrador toma el nuevo al confirmar                                                                                                                          | R-CAT-17           | `packages/api/src/modules/catalog/catalog-admin.int.test.ts`                                                                                                                         |
-| CAT-E03 | e2e   | El administrador crea un producto, edita su precio y lo desactiva desde el backoffice; el catálogo público lo refleja                                                                                                | HU-11 #1           | `apps/e2e/src/admin/catalog.spec.ts`, `apps/e2e/src/a11y/admin/screens.spec.ts`                                                                                                      |
+| CAT-I10 | int   | Guardar sobre una versión desactualizada → `CONFLICT` sin escribir; el seed no revierte ediciones del admin                                                                                                          | R-CAT-18, R-CAT-19 | `packages/api/src/modules/catalog/catalog-admin.int.test.ts`, `packages/db/src/seed/seed-catalog.int.test.ts`                                                                        |
+| CAT-E03 | e2e   | El administrador crea un producto, ve el SKU repetido en su campo, edita su precio y lo desactiva desde el backoffice; el catálogo público lo refleja                                                                | HU-11 #1           | `apps/e2e/src/admin/catalog.spec.ts`, `apps/e2e/src/a11y/admin/screens.spec.ts`                                                                                                      |
 | CAT-E04 | e2e   | Operario sin «Catálogo» en el menú, con aviso de acceso en las rutas; API `FORBIDDEN` a operario y residente, `UNAUTHORIZED` sin sesión                                                                              | HU-11 #2           | `apps/e2e/src/admin/catalog.spec.ts`                                                                                                                                                 |
 
 ## 8. Trazabilidad
@@ -149,5 +152,5 @@ Seed (T-02, #25): ≥ 200 productos sintéticos con la distribución del informe
 | RNF-04    | HU-01    | R-CAT-03, R-CAT-10 | CAT-P01 (T-10, #33)                    |
 | RNF-06    | HU-01    | R-CAT-07           | CAT-U06                                |
 | RNF-09    | HU-01    | R-CAT-08           | CAT-U04, CAT-E02                       |
-| RF-14     | HU-11    | R-CAT-12..17       | CAT-U07..09, CAT-I05..09, CAT-E03..04  |
+| RF-14     | HU-11    | R-CAT-12..19       | CAT-U07..09, CAT-I05..10, CAT-E03..04  |
 | RNF-05    | HU-11    | R-CAT-12           | CAT-U09, CAT-E04                       |
