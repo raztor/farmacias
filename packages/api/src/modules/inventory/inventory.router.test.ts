@@ -77,7 +77,7 @@ describe("inventory router", () => {
       nextCursor: null,
     });
     const [args] = findMany.mock.calls[0] as unknown as [{ where: unknown }];
-    expect(args.where).toEqual({ AND: [{}, { onHand: { lte: "ref" } }] });
+    expect(args.where).toEqual({ AND: [{}, { onHand: { lte: "ref" } }, {}] });
   });
 
   it("rejects a receipt without reason before opening a transaction (HU-10 #2)", async () => {

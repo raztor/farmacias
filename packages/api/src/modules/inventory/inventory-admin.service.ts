@@ -21,6 +21,7 @@ import type {
   SetThresholdInput,
   StockAdjustmentResult,
 } from "./inventory.schema";
+import { encodeListCursor, encodeMovementCursor } from "./inventory-cursor";
 import { ALERTS_MAX_ITEMS } from "./inventory.schema";
 import {
   availabilityLevel,
@@ -154,7 +155,9 @@ const listInventory = async (
     sku: search === "" ? undefined : search,
     onlyLow,
   });
-  const page = toPage(rows, limit, (row) => row.productId);
+  const page = toPage(rows, limit, (row) =>
+    encodeListCursor({ name: row.name, productId: row.productId }),
+  );
   return { items: page.items.map(toItemView), nextCursor: page.nextCursor };
 };
 
@@ -176,7 +179,9 @@ export const createInventoryAdminService = ({
 
     movements: async ({ productId, cursor, limit }) => {
       const rows = await reader.movements({ productId, take: limit + 1, cursor });
-      return toPage(rows, limit, (row) => row.id);
+      return toPage(rows, limit, (row) =>
+        encodeMovementCursor({ createdAt: row.createdAt, id: row.id }),
+      );
     },
 
     adjust: async (actor, input) => {
