@@ -304,8 +304,8 @@ export class InMemoryOrdering {
       residentId: order.residentId,
       status: order.status,
       lines: this.linesOf(order.id).map(({ productId, quantity }) => {
-        const { commercialName, priceClp, active, onHand } = this.product(productId);
-        return { productId, quantity, commercialName, priceClp, active, onHand };
+        const { commercialName, presentation, priceClp, active, onHand } = this.product(productId);
+        return { productId, quantity, commercialName, presentation, priceClp, active, onHand };
       }),
     };
   }

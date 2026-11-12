@@ -46,7 +46,13 @@ describe.skipIf(!INTEGRATION_ENABLED)("orders.repeat on PostgreSQL (HU-14)", () 
     const result = await orders().repeat({ residentId: resident.id, orderId: previous.id });
 
     expect(result.changes).toEqual([
-      expect.objectContaining({ productId: short.id, requested: 5, added: 2, reason: "reduced" }),
+      expect.objectContaining({
+        productId: short.id,
+        presentation: short.presentation,
+        requested: 5,
+        added: 2,
+        reason: "reduced",
+      }),
       expect.objectContaining({
         productId: retired.id,
         requested: 1,

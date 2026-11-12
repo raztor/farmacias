@@ -31,7 +31,7 @@ Permitir que la persona inscrita arme su pedido (productos y cantidades disponib
 13. **R-ORD-13.** El dueño puede cancelar en `draft`, `pending_payment`, `payment_rejected` y `payment_validated`; en este último el stock se restaura en la misma transacción (movimiento `cancellation_restore`). Desde `in_preparation` la cancelación no está disponible. _(§4.6, D-02, D-14)_
 14. **R-ORD-14.** Solo el dueño opera su pedido. Un pedido de otra cuenta (o inexistente) responde `NOT_FOUND`. _(RNF-05, D-10)_
 15. **R-ORD-15.** Solo se edita el pedido en `draft`. Las operaciones de borrador (`addItem`, `setQuantity`, `removeItem`, `setFulfillment`, `confirm`) no reciben el id del pedido: siempre actúan sobre el único borrador actual de la sesión, así que un pedido confirmado, pagado o cancelado no se puede editar por construcción. Sin borrador (p. ej. una pestaña desactualizada después de confirmar), `setQuantity`, `removeItem` y `setFulfillment` responden `NOT_FOUND` (`reason: "NO_DRAFT"`) con «No tienes un pedido en preparación. Si ya lo confirmaste, revísalo en «Mis pedidos»; para comenzar otro, agrega un producto del catálogo.», sin tocar el pedido confirmado; `addItem` abre un borrador nuevo (R-ORD-01). _(§4.6, RNF-09)_
-16. **R-ORD-16.** **Repetir pedido** (`orders.repeat`, HU-14): la persona elige un pedido propio en cualquier estado salvo `draft` y sus productos se **suman** a su borrador actual (que se crea si no existe, R-ORD-01), en una sola transacción. Cada cantidad se limita a `min(on_hand, 99) − cantidad ya en el borrador` (el borrador no reserva stock, D-08); los productos sin stock se omiten como `unavailable` y los inactivos como `inactive`. Las líneas escritas toman el **precio actual** del catálogo. La respuesta `{ draft, changes }` informa cada producto que no se agregó completo (`reduced`, `unavailable`, `inactive`, con `requested` y `added`); si no se pudo agregar nada no se crea un borrador vacío (`draft` puede ser `null`). Un pedido de otra cuenta o inexistente responde `NOT_FOUND` (D-10); repetir el propio borrador responde `CONFLICT` (`ORDER_NOT_REPEATABLE`). _(HU-14, D-30, D-16)_
+16. **R-ORD-16.** **Repetir pedido** (`orders.repeat`, HU-14): la persona elige un pedido propio en cualquier estado salvo `draft` y sus productos se **suman** a su borrador actual (que se crea si no existe, R-ORD-01), en una sola transacción. Cada cantidad se limita a `min(on_hand, 99) − cantidad ya en el borrador` (el borrador no reserva stock, D-08); los productos sin stock se omiten como `unavailable` y los inactivos como `inactive`. Las líneas escritas toman el **precio actual** del catálogo. La respuesta `{ draft, changes }` informa cada producto que no se agregó completo (`reduced`, `unavailable`, `inactive`, con `presentation`, `requested`, `added` y `lineCapReached` cuando limitó el máximo de 99 y no el stock); si no se pudo agregar nada no se crea un borrador vacío (`draft` puede ser `null`). Un pedido de otra cuenta o inexistente responde `NOT_FOUND` (D-10); repetir el propio borrador responde `CONFLICT` (`ORDER_NOT_REPEATABLE`, «Este pedido es tu carrito actual: revísalo en «Mi pedido».»). _(HU-14, D-30, D-16)_
 
 ## 4. Estados y transiciones
 
@@ -97,9 +97,11 @@ type RepeatResult = {
   changes: {
     productId: string;
     commercialName: string;
+    presentation: string; // distingue productos con el mismo nombre (50 mg / 100 mg)
     requested: number; // unidades del pedido anterior
     added: number; // unidades sumadas al borrador (0 si se omitió)
     reason: "reduced" | "unavailable" | "inactive";
+    lineCapReached: boolean; // true si limitó el máximo de 99 por producto y no el stock
   }[];
 };
 ```
