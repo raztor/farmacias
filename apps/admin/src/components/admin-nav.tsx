@@ -18,7 +18,8 @@ export function AdminNav({ role }: AdminNavProps) {
 
   return (
     <nav aria-label="Navegación principal">
-      <ul className="flex flex-row gap-1">
+      {/* Wraps on narrow windows and at 200 % zoom (SC 1.4.10): never a horizontal scroll. */}
+      <ul className="flex flex-row flex-wrap gap-1">
         {navItemsFor(role).map((item) => {
           const active = isNavItemActive(item, pathname);
           return (
