@@ -67,6 +67,13 @@ test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
       await check("admin-auditoria", page.getByRole("heading", { level: 1, name: "Auditoría" }));
     });
 
+    await test.step("reportes (solo administración, HU-13)", async () => {
+      await page.goto("/reports");
+      await check("admin-reportes", page.getByRole("region", { name: "Pedidos por estado" }));
+      // Counts as text in accessible tables (caption + header cells), not only as cards.
+      await expect(page.getByRole("table", { name: /por estado actual/ })).toBeVisible();
+    });
+
     expect(problems, problems.join("\n")).toEqual([]);
   });
 });
