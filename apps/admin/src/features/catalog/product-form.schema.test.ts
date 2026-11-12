@@ -26,9 +26,23 @@ describe("productFormSchema (HU-11)", () => {
     });
   });
 
-  it.each(["$1.490", "1.490", " 1 490 "])("reads %j as 1490 pesos", (priceClp) => {
+  it.each(["$1.490", "1.490", " 1490 ", "$ 1490"])("reads %j as 1490 pesos", (priceClp) => {
     expect(productFormSchema.parse({ ...filled, priceClp }).priceClp).toBe(1490);
   });
+
+  it("reads proper thousands groups of larger prices", () => {
+    expect(productFormSchema.parse({ ...filled, priceClp: "$1.250.000" }).priceClp).toBe(1_250_000);
+  });
+
+  it.each(["1990.50", "19.90", "1.5", "1.4900", "1,490", "1 490", "1.490.5", ".990", "990."])(
+    "rejects %j instead of guessing the decimals",
+    (priceClp) => {
+      expect(validateForm(productFormSchema, { ...filled, priceClp })).toEqual({
+        success: false,
+        errors: { priceClp: "Escribe el precio en pesos, solo con números (sin decimales)" },
+      });
+    },
+  );
 
   it("reads the unchecked active box as an inactive product", () => {
     expect(productFormSchema.parse({ ...filled, active: "false" }).active).toBe(false);

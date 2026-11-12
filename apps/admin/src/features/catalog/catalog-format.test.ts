@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   categoryLabel,
+  isNewerVersion,
   productHref,
   productSavedMessage,
   productStatusLabel,
@@ -21,6 +22,13 @@ describe("catalog-format", () => {
     expect(stockLabel(0)).toBe("Sin stock");
     expect(stockLabel(1)).toBe("1 unidad");
     expect(stockLabel(12)).toBe("12 unidades");
+  });
+
+  it("detects a version saved after the one being edited", () => {
+    const base = { updatedAt: new Date("2026-11-01T12:00:00.000Z") };
+    expect(isNewerVersion(base, { updatedAt: new Date("2026-11-01T12:00:00.001Z") })).toBe(true);
+    expect(isNewerVersion(base, { updatedAt: new Date("2026-11-01T12:00:00.000Z") })).toBe(false);
+    expect(isNewerVersion(base, { updatedAt: new Date("2026-11-01T11:59:59.999Z") })).toBe(false);
   });
 
   it("names the product in the success message", () => {

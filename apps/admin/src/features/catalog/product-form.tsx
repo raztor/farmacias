@@ -7,7 +7,7 @@ import {
   type ProductFields,
 } from "@repo/shared";
 import { Button, Input } from "@repo/ui";
-import type { SubmitEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type SubmitEvent } from "react";
 
 import { ButtonLink } from "../../components/button-link";
 import { useForm, type UseFormResult } from "../../lib/use-form";
@@ -17,27 +17,25 @@ import { productFormSchema, type ProductFormValues } from "./product-form.schema
 
 type ProductFormState = UseFormResult<ProductFormValues, ProductFields>;
 
-type ProductFieldsGridProps = Readonly<{ form: ProductFormState; onSubmitEditing: () => void }>;
-
 /** Text fields and category of the product, two columns from `sm` up. */
-function ProductFieldsGrid({ form, onSubmitEditing }: ProductFieldsGridProps) {
-  const { values, errors, setField, fieldProps } = form;
+function ProductFieldsGrid({ form }: Readonly<{ form: ProductFormState }>) {
+  const { values, errors, setField, fieldProps: textField } = form;
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
       <Input
         label="Nombre comercial"
-        {...fieldProps("commercialName")}
+        {...textField("commercialName")}
         maxLength={PRODUCT_NAME_MAX_LENGTH}
       />
       <Input
         label="Principio activo"
-        {...fieldProps("activeIngredient")}
+        {...textField("activeIngredient")}
         maxLength={PRODUCT_NAME_MAX_LENGTH}
       />
       <Input
         label="Presentación"
         hint="Por ejemplo: Comprimidos 50 mg x 30"
-        {...fieldProps("presentation")}
+        {...textField("presentation")}
         maxLength={PRODUCT_PRESENTATION_MAX_LENGTH}
       />
       <CategorySelect
@@ -50,21 +48,23 @@ function ProductFieldsGrid({ form, onSubmitEditing }: ProductFieldsGridProps) {
       <Input
         label="SKU"
         hint="Código único: letras, números y guiones."
-        {...fieldProps("sku")}
+        {...textField("sku")}
         maxLength={PRODUCT_SKU_MAX_LENGTH}
         autoCapitalize="characters"
         autoCorrect={false}
       />
       <Input
         label="Precio (CLP)"
-        hint="En pesos, sin decimales."
-        {...fieldProps("priceClp")}
+        hint="En pesos, sin decimales. Por ejemplo: 6990 o 6.990"
+        {...textField("priceClp")}
         inputMode="numeric"
-        onSubmitEditing={onSubmitEditing}
       />
     </div>
   );
 }
+
+/** Error the API found on a field after submitting (shown inline, R-CAT-13). */
+export type ReportFieldError = (field: "sku", message: string) => void;
 
 type ProductFormProps = Readonly<{
   /** Accessible name of the form, e.g. "Nuevo producto". */
@@ -72,21 +72,48 @@ type ProductFormProps = Readonly<{
   initialValues: ProductFormValues;
   submitLabel: string;
   submitting: boolean;
-  onSubmit: (product: ProductFields) => void;
+  onSubmit: (product: ProductFields, reportFieldError: ReportFieldError) => void;
 }>;
 
 /**
+ * Moves the focus to the first invalid control after each failed attempt (`aria-invalid`, set by
+ * the `@repo/ui` inputs and the category select), so keyboard and screen reader users land on it.
+ */
+function useFocusFirstInvalid() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (attempt === 0) return;
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [attempt]);
+  return {
+    formRef,
+    focusFirstInvalid: () => {
+      setAttempt((current) => current + 1);
+    },
+  };
+}
+
+/**
  * Product data form (HU-11), validated with the shared schema before anything is sent. The API
- * validates again and answers CONFLICT for a SKU already in use.
+ * validates again; a SKU already in use comes back as an error on the SKU field.
  */
 export function ProductForm(props: ProductFormProps) {
   const { label, initialValues, submitLabel, submitting, onSubmit } = props;
   const form = useForm(productFormSchema, initialValues);
+  const { formRef, focusFirstInvalid } = useFocusFirstInvalid();
 
   const submit = () => {
     if (submitting) return;
     const data = form.validate();
-    if (data !== null) onSubmit(data);
+    if (data === null) {
+      focusFirstInvalid();
+      return;
+    }
+    onSubmit(data, (field, message) => {
+      form.setFieldError(field, message);
+      focusFirstInvalid();
+    });
   };
 
   const onFormSubmit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -94,14 +121,25 @@ export function ProductForm(props: ProductFormProps) {
     submit();
   };
 
+  // Enter in any text field or in the «Producto activo» box saves (the select keeps Enter for its
+  // own list). One handler for the whole form, so a key press never submits twice.
+  const onKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    if (!(event.target instanceof HTMLInputElement)) return;
+    event.preventDefault();
+    submit();
+  };
+
   return (
     <form
+      ref={formRef}
       noValidate
       aria-label={label}
       onSubmit={onFormSubmit}
+      onKeyDown={onKeyDown}
       className="flex max-w-2xl flex-col gap-5 rounded-lg border border-border bg-card p-4 sm:p-6"
     >
-      <ProductFieldsGrid form={form} onSubmitEditing={submit} />
+      <ProductFieldsGrid form={form} />
       <ActiveCheckbox
         checked={form.values.active === "true"}
         onChange={(checked) => {

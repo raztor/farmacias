@@ -3,10 +3,13 @@
 import type { AdminProduct } from "@repo/api";
 import { Heading, Text } from "@repo/ui";
 import Link from "next/link";
+import { useState } from "react";
 
+import { buttonClasses } from "../../components/button-link";
 import { INLINE_LINK_CLASSES } from "../../components/form-styles";
 import { QueryError } from "../../components/query-error";
-import { CATALOG_PATH, stockLabel } from "./catalog-format";
+import { reportSkuTaken } from "./catalog-errors";
+import { CATALOG_PATH, isNewerVersion, stockLabel } from "./catalog-format";
 import { ProductForm } from "./product-form";
 import { productFormValues } from "./product-form.schema";
 import { ProductStatusBadge } from "./product-status-badge";
@@ -21,28 +24,65 @@ function BackLink() {
   );
 }
 
-function ProductEditor({ product }: Readonly<{ product: AdminProduct }>) {
+/** Someone else saved the product while the admin was editing it (R-CAT-18). */
+function NewerVersionNotice({ onLoad }: Readonly<{ onLoad: () => void }>) {
+  return (
+    <div
+      role="status"
+      className="flex flex-col items-start gap-3 rounded-md border border-warning bg-background p-4"
+    >
+      <Text>
+        Otra persona guardó cambios en este producto después de que lo abriste. Para guardar los
+        tuyos, carga la versión actual (se descartan los cambios que no guardaste).
+      </Text>
+      <button type="button" onClick={onLoad} className={buttonClasses("outline", "h-9 text-sm")}>
+        Cargar la versión actual
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The form edits the version loaded when the page opened (`base`): a background refetch never
+ * resets what the admin is typing. Saving sends that version's `updatedAt`; if the product changed
+ * meanwhile the API answers CONFLICT and the newer version can be loaded explicitly.
+ */
+function ProductEditor({ latest }: Readonly<{ latest: AdminProduct }>) {
   const update = useUpdateProduct();
+  const [base, setBase] = useState(latest);
 
   return (
     <>
       <div className="flex flex-row flex-wrap items-center gap-3">
-        <Heading level={1}>Editar {product.commercialName}</Heading>
-        <ProductStatusBadge active={product.active} />
+        <Heading level={1}>Editar {base.commercialName}</Heading>
+        <ProductStatusBadge active={base.active} />
       </div>
       <Text variant="muted">
-        Stock actual: {stockLabel(product.onHand)}. El stock y el umbral se gestionan en Inventario.
+        Stock actual: {stockLabel(latest.onHand)}. El stock y el umbral se gestionan en Inventario.
         Un cambio de precio no modifica los pedidos ya confirmados.
       </Text>
+      {isNewerVersion(base, latest) ? (
+        <NewerVersionNotice
+          onLoad={() => {
+            setBase(latest);
+          }}
+        />
+      ) : null}
       <ProductForm
-        // A fresh form when the stored product changes (e.g. after saving).
-        key={product.updatedAt.toISOString()}
-        label={`Editar ${product.commercialName}`}
-        initialValues={productFormValues(product)}
+        key={base.updatedAt.toISOString()}
+        label={`Editar ${base.commercialName}`}
+        initialValues={productFormValues(base)}
         submitLabel="Guardar cambios"
         submitting={update.isPending}
-        onSubmit={(fields) => {
-          update.mutate({ id: product.id, ...fields });
+        onSubmit={(fields, reportFieldError) => {
+          update.mutate(
+            { id: base.id, expectedUpdatedAt: base.updatedAt, ...fields },
+            {
+              onError: (error) => {
+                reportSkuTaken(error, reportFieldError);
+              },
+            },
+          );
         }}
       />
     </>
@@ -61,7 +101,7 @@ export function EditProduct({ productId }: Readonly<{ productId: string }>) {
           Cargando producto…
         </Text>
       ) : null}
-      {query.isError ? (
+      {query.isError && query.data === undefined ? (
         <QueryError
           error={query.error}
           retrying={query.isRefetching}
@@ -70,7 +110,7 @@ export function EditProduct({ productId }: Readonly<{ productId: string }>) {
           }}
         />
       ) : null}
-      {query.data === undefined ? null : <ProductEditor product={query.data} />}
+      {query.data === undefined ? null : <ProductEditor key={productId} latest={query.data} />}
     </div>
   );
 }

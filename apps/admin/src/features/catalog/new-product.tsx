@@ -2,6 +2,7 @@
 
 import { Text } from "@repo/ui";
 
+import { reportSkuTaken } from "./catalog-errors";
 import { ProductForm } from "./product-form";
 import { EMPTY_PRODUCT_FORM } from "./product-form.schema";
 import { useCreateProduct } from "./use-save-product";
@@ -21,8 +22,12 @@ export function NewProduct() {
         initialValues={EMPTY_PRODUCT_FORM}
         submitLabel="Crear producto"
         submitting={create.isPending}
-        onSubmit={(product) => {
-          create.mutate(product);
+        onSubmit={(product, reportFieldError) => {
+          create.mutate(product, {
+            onError: (error) => {
+              reportSkuTaken(error, reportFieldError);
+            },
+          });
         }}
       />
     </div>

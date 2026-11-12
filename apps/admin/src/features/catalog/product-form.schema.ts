@@ -37,19 +37,24 @@ export function productFormValues(product: ProductFields): ProductFormValues {
   };
 }
 
-/** "$6.990", "6 990" and "6990" are the same price: thousands separators and "$" are dropped. */
-const PRICE_DECORATIONS = /[$.\s]/g;
+/**
+ * A price in pesos: plain digits ("6990") or proper CLP thousands groups ("6.990", "$1.250.000"),
+ * optionally after "$". Anything else ("19.90", "1990.50", "1,5") would hide decimals or a typo,
+ * so it is rejected instead of guessed.
+ */
+const CLP_PRICE_PATTERN = /^\$?\s*(?:\d{1,3}(?:\.\d{3})+|\d+)$/;
+const PRICE_FORMAT_MESSAGE = "Escribe el precio en pesos, solo con números (sin decimales)";
 
 const priceField = z
   .string()
-  .transform((value) => value.replace(PRICE_DECORATIONS, ""))
+  .trim()
   .pipe(
     z
       .string()
       .min(1, { error: "Ingresa el precio en pesos" })
-      .regex(/^\d+$/, { error: "Escribe el precio en pesos, solo con números (sin decimales)" }),
+      .regex(CLP_PRICE_PATTERN, { error: PRICE_FORMAT_MESSAGE }),
   )
-  .transform(Number)
+  .transform((value) => Number(value.replace(/[$.\s]/g, "")))
   .pipe(productPriceClpSchema);
 
 /**
