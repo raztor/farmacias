@@ -27,7 +27,7 @@ describe("createProductInput / updateProductInput (R-CAT-12, R-CAT-13)", () => {
     }
   });
 
-  it("requires a product id to update", () => {
+  it("requires a product id and the loaded version to update (R-CAT-18)", () => {
     const fields = {
       sku: "E2E-1",
       commercialName: "Producto",
@@ -37,7 +37,11 @@ describe("createProductInput / updateProductInput (R-CAT-12, R-CAT-13)", () => {
       priceClp: 990,
       active: false,
     };
-    expect(updateProductInput.safeParse(fields).success).toBe(false);
-    expect(updateProductInput.parse({ ...fields, id: " prod-1 " }).id).toBe("prod-1");
+    const expectedUpdatedAt = new Date("2026-11-01T12:00:00.000Z");
+    expect(updateProductInput.safeParse({ ...fields, expectedUpdatedAt }).success).toBe(false);
+    expect(updateProductInput.safeParse({ ...fields, id: "prod-1" }).success).toBe(false);
+    expect(updateProductInput.parse({ ...fields, id: " prod-1 ", expectedUpdatedAt }).id).toBe(
+      "prod-1",
+    );
   });
 });
