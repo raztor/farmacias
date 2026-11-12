@@ -7,6 +7,7 @@ import { AppScreen } from "../../components/app-screen";
 import { ErrorState, LoadingState } from "../../components/query-state";
 import { formatClp, formatUnits } from "../../lib/format";
 import { RequireSignIn } from "../auth";
+import { RepeatOrderNotice } from "../orders";
 import { CartLine } from "./cart-line";
 import { useDraft } from "./use-draft";
 
@@ -74,7 +75,10 @@ export function CartScreen() {
         </Text>
       </View>
       <RequireSignIn title="Inicia sesión para ver tu pedido">
-        <CartBody />
+        <View className="gap-4">
+          <RepeatOrderNotice />
+          <CartBody />
+        </View>
       </RequireSignIn>
     </AppScreen>
   );
