@@ -35,14 +35,15 @@ export type CatalogSearchInput = z.input<typeof searchCatalogInput>;
 /** What the service receives (`limit` always set). */
 export type CatalogSearchQuery = z.output<typeof searchCatalogInput>;
 
-/** Input of `catalog.byId`. */
-export const productByIdInput = z.object({
-  id: z
-    .string()
-    .trim()
-    .min(1, { error: "Indica el producto" })
-    .max(PRODUCT_ID_MAX_LENGTH, { error: "El identificador del producto no es válido" }),
-});
+/** Id of a product (`products.id`). */
+export const productIdSchema = z
+  .string()
+  .trim()
+  .min(1, { error: "Indica el producto" })
+  .max(PRODUCT_ID_MAX_LENGTH, { error: "El identificador del producto no es válido" });
+
+/** Input of `catalog.byId` and `catalog.adminById`. */
+export const productByIdInput = z.object({ id: productIdSchema });
 export type ProductByIdInput = z.output<typeof productByIdInput>;
 
 /** Availability shown to the public (R-CAT-06): text + icon in the UI, never color only. */

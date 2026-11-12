@@ -32,6 +32,11 @@ export function canCancel(status: OrderStatus): boolean {
   return canPay(status) || status === "payment_validated";
 }
 
+/** Any placed order can be repeated into the cart (HU-14, D-30); the draft is the cart. Pure. */
+export function canRepeat(status: OrderStatus): boolean {
+  return status !== "draft";
+}
+
 const ACTOR_LABELS: Readonly<Record<ActorRole, string>> = {
   resident: "Tú",
   operator: "Farmacia",

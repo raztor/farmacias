@@ -20,6 +20,12 @@ export {
   type SetRoleInput,
 } from "./modules/admin";
 export {
+  type AdminListProductsInput,
+  type AdminProduct,
+  type AdminProductList,
+  type AdminProductStatus,
+  type CreateProductInput,
+  type UpdateProductInput,
   type CatalogSearchInput,
   type CatalogSearchResult,
   type ProductAvailability,
@@ -52,6 +58,9 @@ export {
   type OrderTransitionService,
   type OrdersService,
   type RemoveItemInput,
+  type RepeatChange,
+  type RepeatChangeReason,
+  type RepeatResult,
   type SetFulfillmentInput,
   type SetQuantityInput,
   type TransitionActor,
