@@ -76,3 +76,55 @@ describe("describeAuditChange", () => {
     );
   });
 });
+
+describe("describeAuditChange (Sprint 3 actions)", () => {
+  it("describes receipts and adjustments as stock changes", () => {
+    expect(
+      describeAuditChange({
+        action: "stock.receipt",
+        before: { onHand: 2 },
+        after: { onHand: 12 },
+      }),
+    ).toBe("Stock 2 → 12");
+    expect(
+      describeAuditChange({
+        action: "stock.adjustment",
+        before: { onHand: 5 },
+        after: { onHand: 4 },
+      }),
+    ).toBe("Stock 5 → 4");
+  });
+
+  it("describes threshold changes", () => {
+    expect(
+      describeAuditChange({
+        action: "inventory.threshold_change",
+        before: { lowStockThreshold: 5 },
+        after: { lowStockThreshold: 8 },
+      }),
+    ).toBe("Umbral 5 → 8");
+    expect(
+      describeAuditChange({ action: "inventory.threshold_change", before: null, after: {} }),
+    ).toBe("Sin detalle");
+  });
+
+  it("describes product creation and price changes", () => {
+    expect(describeAuditChange({ action: "product.create", before: null, after: {} })).toBe(
+      "Producto creado",
+    );
+    expect(
+      describeAuditChange({
+        action: "product.update",
+        before: { priceClp: 1000 },
+        after: { priceClp: 1200 },
+      }),
+    ).toMatch(/^Precio \$\s?1\.000 → \$\s?1\.200$/u);
+    expect(
+      describeAuditChange({
+        action: "product.update",
+        before: { priceClp: 1000, active: true },
+        after: { priceClp: 1000, active: false },
+      }),
+    ).toBe("Datos del producto editados");
+  });
+});

@@ -15,6 +15,11 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<AuditAction, string>> = {
   "stock.restore": "Reposición de stock por cancelación",
   "payment.stock_conflict": "Pago aprobado sin stock suficiente",
   "user.role_change": "Cambio de rol",
+  "stock.receipt": "Recepción de stock",
+  "stock.adjustment": "Ajuste de stock",
+  "inventory.threshold_change": "Cambio de umbral de stock bajo",
+  "product.create": "Producto creado",
+  "product.update": "Producto editado",
 };
 
 export const AUDIT_ENTITY_LABELS: Readonly<Record<AuditEntityOption, string>> = {
@@ -35,6 +40,8 @@ const statusSnapshot = z.object({ status: z.string() });
 const stockSnapshot = z.object({ onHand: z.number() });
 const roleSnapshot = z.object({ role: z.string() });
 const conflictSnapshot = z.object({ products: z.array(z.unknown()) });
+const thresholdSnapshot = z.object({ lowStockThreshold: z.number() });
+const productSnapshot = z.object({ priceClp: z.number() });
 
 export type AuditChangeSource = Readonly<{ action: AuditAction; before: unknown; after: unknown }>;
 
@@ -66,6 +73,27 @@ const transitionText = (before: string | null, after: string | null): string | n
   return before === null ? `${ARROW.trim()} ${after}` : `${before}${ARROW}${after}`;
 };
 
+const thresholdText = (value: unknown): string | null => {
+  const parsed = thresholdSnapshot.safeParse(value);
+  return parsed.success ? String(parsed.data.lowStockThreshold) : null;
+};
+
+const CLP = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" });
+
+const priceText = (value: unknown): string | null => {
+  const parsed = productSnapshot.safeParse(value);
+  return parsed.success ? CLP.format(parsed.data.priceClp) : null;
+};
+
+/** "Precio $1.000 → $1.200" when the price changed, a generic text otherwise. */
+const productUpdateText = (before: unknown, after: unknown): string => {
+  const from = priceText(before);
+  const to = priceText(after);
+  return from !== null && to !== null && from !== to
+    ? `Precio ${from}${ARROW}${to}`
+    : "Datos del producto editados";
+};
+
 const conflictText = (after: unknown): string => {
   const parsed = conflictSnapshot.safeParse(after);
   if (!parsed.success) return NO_DETAIL;
@@ -75,22 +103,38 @@ const conflictText = (after: unknown): string => {
     : `${String(count)} productos sin stock suficiente`;
 };
 
+type ChangeDescriber = (before: unknown, after: unknown) => string;
+
+/** "<prefix> A → B" from two snapshots, or "Sin detalle" when there is no new value. */
+const prefixed =
+  (prefix: string, read: (value: unknown) => string | null): ChangeDescriber =>
+  (before, after) => {
+    const text = transitionText(read(before), read(after));
+    return text === null ? NO_DETAIL : `${prefix} ${text}`;
+  };
+
+const stockChange = prefixed("Stock", stockText);
+
+const DESCRIBERS: Readonly<Record<AuditAction, ChangeDescriber>> = {
+  "order.transition": (before, after) =>
+    transitionText(statusText(before), statusText(after)) ?? NO_DETAIL,
+  "stock.sale": stockChange,
+  "stock.restore": stockChange,
+  "stock.receipt": stockChange,
+  "stock.adjustment": stockChange,
+  "user.role_change": (before, after) =>
+    transitionText(roleText(before), roleText(after)) ?? NO_DETAIL,
+  "payment.stock_conflict": (_before, after) => conflictText(after),
+  "inventory.threshold_change": prefixed("Umbral", thresholdText),
+  "product.create": () => "Producto creado",
+  "product.update": productUpdateText,
+};
+
 /**
  * One-line summary of what changed, in Spanish ("Pago validado → En preparación",
- * "Stock 10 → 8", "Persona inscrita → Operario"). Never prints raw JSON. Pure.
+ * "Stock 10 → 8", "Persona inscrita → Operario", "Precio $1.000 → $1.200"). Never prints raw
+ * JSON. Pure.
  */
 export function describeAuditChange({ action, before, after }: AuditChangeSource): string {
-  switch (action) {
-    case "order.transition":
-      return transitionText(statusText(before), statusText(after)) ?? NO_DETAIL;
-    case "stock.sale":
-    case "stock.restore": {
-      const text = transitionText(stockText(before), stockText(after));
-      return text === null ? NO_DETAIL : `Stock ${text}`;
-    }
-    case "user.role_change":
-      return transitionText(roleText(before), roleText(after)) ?? NO_DETAIL;
-    case "payment.stock_conflict":
-      return conflictText(after);
-  }
+  return DESCRIBERS[action](before, after);
 }

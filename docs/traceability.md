@@ -114,12 +114,15 @@ Cada criterio Must (Inception §8.1) tiene al menos una prueba automatizada (RNF
 | T-12 Compatibilidad de navegadores             | RNF-03                         | [#35](https://github.com/raztor/farmacias/issues/35)                                                       |
 | T-07 / T-13 Informes y videos de sprint review | OE-07                          | [#30](https://github.com/raztor/farmacias/issues/30), [#36](https://github.com/raztor/farmacias/issues/36) |
 
-## 6. Fuera de alcance en esta iteración (Should / Could)
+## 6. Sprint 3 (Should / Could)
 
-| Requisito | Historia | Prioridad | Nota                                                                                      |
-| --------- | -------- | --------- | ----------------------------------------------------------------------------------------- |
-| RF-13     | HU-10    | Should    | Recepciones y ajustes con motivo. El modelo reserva los motivos `receipt` y `adjustment`. |
-| RF-14     | HU-11    | Should    | Mantención de catálogo y precios; en el Must el catálogo se carga por seed.               |
-| RF-15     | HU-12    | Should    | Alertas por umbral; en el Must el umbral solo etiqueta «Pocas unidades» (D-17).           |
-| RF-16     | HU-13    | Could     | Reportes operativos básicos.                                                              |
-| —         | HU-14    | Could     | Repetir un pedido anterior (D-20).                                                        |
+Historias incorporadas en el Sprint 3. Cada PR que las implementa agrega sus filas en §2 y §3 y cambia aquí el estado.
+
+| Requisito | Historia | Prioridad | Decisiones | Issue                                                | Estado    |
+| --------- | -------- | --------- | ---------- | ---------------------------------------------------- | --------- |
+| RF-13     | HU-10    | Should    | D-25       | [#19](https://github.com/raztor/farmacias/issues/19) | Pendiente |
+| RF-14     | HU-11    | Should    | D-28       | [#20](https://github.com/raztor/farmacias/issues/20) | Pendiente |
+| RF-15     | HU-12    | Should    | D-26, D-27 | [#21](https://github.com/raztor/farmacias/issues/21) | Pendiente |
+| RF-16     | HU-13    | Could     | D-29       | [#22](https://github.com/raztor/farmacias/issues/22) | Pendiente |
+| —         | HU-14    | Could     | D-30       | [#23](https://github.com/raztor/farmacias/issues/23) | Pendiente |
+| OE-07     | T-15     | Should    | —          | [#44](https://github.com/raztor/farmacias/issues/44) | Pendiente |
