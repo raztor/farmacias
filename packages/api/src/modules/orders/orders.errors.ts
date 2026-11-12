@@ -22,7 +22,7 @@ export const draftNotFoundError = (): AppError =>
 
 /** HU-14: only an order already confirmed can be repeated (a draft is the cart itself). */
 export const orderNotRepeatableError = (): AppError =>
-  new AppError("CONFLICT", "Este pedido aún está en preparación: revísalo en «Mi pedido».", {
+  new AppError("CONFLICT", "Este pedido es tu carrito actual: revísalo en «Mi pedido».", {
     details: { reason: "ORDER_NOT_REPEATABLE" },
   });
 

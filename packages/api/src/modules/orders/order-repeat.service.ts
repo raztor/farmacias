@@ -26,17 +26,20 @@ const findOwnSource = async (
   return source;
 };
 
-/** Writes the planned lines at the current catalog price, then the new total and version. */
+/**
+ * Writes the planned lines at the current catalog price (carried by the plan, so there is no
+ * price lookup that could miss), then the new total and version.
+ */
 const writeAdditions = async (
   tx: OrdersTx,
   draft: DraftRecord,
-  source: RepeatSourceRecord,
   additions: readonly RepeatAddition[],
 ): Promise<void> => {
-  const written = additions.map(({ productId, quantity }) => {
-    const priceClp = source.lines.find((line) => line.productId === productId)?.priceClp ?? 0;
-    return { productId, quantity, unitPriceClp: priceClp };
-  });
+  const written = additions.map(({ productId, quantity, unitPriceClp }) => ({
+    productId,
+    quantity,
+    unitPriceClp,
+  }));
   for (const line of written) {
     await tx.saveLine({ orderId: draft.id, ...line, lineTotalClp: lineTotalClp(line) });
   }
@@ -68,7 +71,7 @@ export const createRepeatService = ({
           return { draft: existing ? toOrderDraft(existing) : null, changes };
         }
         const draft = existing ?? (await tx.createDraft(residentId));
-        await writeAdditions(tx, draft, source, additions);
+        await writeAdditions(tx, draft, additions);
         return { draft: toOrderDraft(await tx.loadDraft(draft.id)), changes };
       }),
     );

@@ -6,6 +6,7 @@ export type RepeatSourceLineRecord = {
   productId: string;
   quantity: number;
   commercialName: string;
+  presentation: string;
   priceClp: number;
   active: boolean;
   onHand: number;
@@ -38,6 +39,7 @@ export const findRepeatSource = async (
           product: {
             select: {
               commercialName: true,
+              presentation: true,
               priceClp: true,
               active: true,
               inventory: { select: { onHand: true } },
@@ -57,6 +59,7 @@ export const findRepeatSource = async (
       productId,
       quantity,
       commercialName: product.commercialName,
+      presentation: product.presentation,
       priceClp: product.priceClp,
       active: product.active,
       onHand: product.inventory?.onHand ?? 0,

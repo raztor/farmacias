@@ -81,23 +81,29 @@ describe("orders service — repeat (HU-14, D-30)", () => {
       {
         productId: "p-losartan",
         commercialName: "Losartán 50 mg",
+        presentation: "Comprimidos x 30",
         requested: 2,
         added: 1,
         reason: "reduced",
+        lineCapReached: false,
       },
       {
         productId: "p-melatonina",
         commercialName: "Melatonina 3 mg",
+        presentation: "Comprimidos x 30",
         requested: 3,
         added: 0,
         reason: "inactive",
+        lineCapReached: false,
       },
       {
         productId: "p-ibuprofeno",
         commercialName: "Ibuprofeno 400 mg",
+        presentation: "Comprimidos x 30",
         requested: 1,
         added: 0,
         reason: "unavailable",
+        lineCapReached: false,
       },
     ]);
     expect(result.draft?.lines.map((line) => [line.productId, line.quantity])).toEqual([
@@ -150,6 +156,10 @@ describe("orders service — repeat (HU-14, D-30)", () => {
 
     await expect(
       service.repeat({ residentId: RESIDENT, orderId: "previous" }),
-    ).rejects.toMatchObject({ code: "CONFLICT", details: { reason: "ORDER_NOT_REPEATABLE" } });
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Este pedido es tu carrito actual: revísalo en «Mi pedido».",
+      details: { reason: "ORDER_NOT_REPEATABLE" },
+    });
   });
 });
