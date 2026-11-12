@@ -1,6 +1,8 @@
 import {
   AppError,
   DEFAULT_LOW_STOCK_THRESHOLD,
+  PRODUCT_SKU_TAKEN_MESSAGE,
+  PRODUCT_STALE_MESSAGE,
   buildProductSearchText,
   noopLogger,
   normalizeSearchText,
@@ -27,9 +29,7 @@ import type {
 } from "./catalog-admin.schema";
 
 export const ADMIN_PRODUCT_NOT_FOUND_MESSAGE = "El producto no existe.";
-export const PRODUCT_SKU_TAKEN_MESSAGE = "Ya existe un producto con ese SKU.";
-export const PRODUCT_STALE_MESSAGE =
-  "El producto cambió mientras lo editabas. Recarga para ver los cambios.";
+export { PRODUCT_SKU_TAKEN_MESSAGE, PRODUCT_STALE_MESSAGE };
 
 /** Inventory row of a new product (R-CAT-14, D-28): no stock and the default threshold. */
 export const NEW_PRODUCT_INVENTORY = {

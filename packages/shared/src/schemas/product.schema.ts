@@ -9,6 +9,11 @@ export const PRODUCT_PRESENTATION_MAX_LENGTH = 200;
 /** Highest price accepted by the back office (CLP, no decimals). */
 export const PRODUCT_PRICE_MAX_CLP = 9_999_999;
 
+/** CONFLICT messages of `catalog.create` / `catalog.update`; the admin form matches them. */
+export const PRODUCT_SKU_TAKEN_MESSAGE = "Ya existe un producto con ese SKU.";
+export const PRODUCT_STALE_MESSAGE =
+  "El producto cambió mientras lo editabas. Recarga para ver los cambios.";
+
 const SKU_PATTERN = /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 
 /** Required trimmed text with a maximum length (Spanish messages for the admin form). */
