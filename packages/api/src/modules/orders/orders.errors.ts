@@ -20,6 +20,12 @@ export const DRAFT_NOT_FOUND_MESSAGE =
 export const draftNotFoundError = (): AppError =>
   new AppError("NOT_FOUND", DRAFT_NOT_FOUND_MESSAGE, { details: { reason: "NO_DRAFT" } });
 
+/** HU-14: only an order already confirmed can be repeated (a draft is the cart itself). */
+export const orderNotRepeatableError = (): AppError =>
+  new AppError("CONFLICT", "Este pedido es tu carrito actual: revísalo en «Mi pedido».", {
+    details: { reason: "ORDER_NOT_REPEATABLE" },
+  });
+
 export const productNotFoundError = (): AppError =>
   new AppError("NOT_FOUND", "Este producto no está disponible en el catálogo.");
 

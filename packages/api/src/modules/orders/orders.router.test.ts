@@ -42,7 +42,29 @@ describe("orders and payments routers", () => {
     await expect(
       caller.payments.pay({ orderId: "o1", idempotencyKey: KEY, scenario: "approve" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.orders.repeat({ orderId: "o1" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
     expect($transaction).not.toHaveBeenCalled();
+  });
+
+  it("repeats only the session resident's orders (HU-14, D-10)", async () => {
+    const findUnique = vi.fn(() =>
+      Promise.resolve({ id: "o1", residentId: "resident-2", status: "delivered", lines: [] }),
+    );
+    const db: Record<string, unknown> = { order: { findUnique } };
+    db.$transaction = (run: (tx: unknown) => unknown) => run(db);
+    const caller = createCaller(
+      await createTestContext({ session: resident, db: db as unknown as FakeDb }),
+    );
+
+    await expect(caller.orders.repeat({ orderId: "o1" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(caller.orders.repeat({ orderId: " " })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(findUnique).toHaveBeenCalledTimes(1);
   });
 
   it("identifies the missing delivery field with BAD_REQUEST (HU-04 #2)", async () => {

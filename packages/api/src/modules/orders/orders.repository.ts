@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@repo/db";
 import { isFulfillmentType, type FulfillmentType } from "@repo/shared";
 
 import { INTERACTIVE_TRANSACTION_OPTIONS } from "../../lib/transactions";
+import { findRepeatSource, type RepeatSourceRecord } from "./order-repeat.repository";
 import { createTransitionDeps } from "./order-transition.repository";
 import type { TransitionDeps } from "./order-transition.service";
 import type { DeliveryDetails } from "./orders.schema";
@@ -63,6 +64,8 @@ export type OrdersTx = TransitionDeps & {
   deleteLine: (orderId: string, productId: string) => Promise<boolean>;
   /** Stores the new total (and fulfillment) and bumps the version. */
   updateDraft: (orderId: string, patch: DraftPatch) => Promise<void>;
+  /** Any order with its lines and the current catalog data, to repeat it (HU-14). */
+  findRepeatSource: (orderId: string) => Promise<RepeatSourceRecord | null>;
 };
 
 export type OrdersRepository = {
@@ -211,6 +214,7 @@ const createOrdersTx = (tx: Prisma.TransactionClient): OrdersTx => ({
       },
     });
   },
+  findRepeatSource: (orderId) => findRepeatSource(tx, orderId),
 });
 
 export const createOrdersRepository = (db: PrismaClient): OrdersRepository => ({

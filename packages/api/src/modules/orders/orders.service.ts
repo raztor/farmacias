@@ -3,6 +3,7 @@ import { noopLogger, ORDER_LINE_MAX_QUANTITY, type AppLogger } from "@repo/share
 import { retryOnUniqueViolation } from "../../lib/transactions";
 import type { ApiDependencies } from "../../trpc";
 import { createCheckoutService, type CheckoutService } from "./order-checkout.service";
+import { createRepeatService, type RepeatService } from "./order-repeat.service";
 import { createTransitionRunner } from "./order-transition.repository";
 import {
   createOrderTransitionService,
@@ -43,7 +44,7 @@ export type DraftService = {
   setFulfillment: (command: ResidentCommand<SetFulfillmentInput>) => Promise<OrderDraft>;
 };
 
-export type OrdersService = DraftService & CheckoutService;
+export type OrdersService = DraftService & CheckoutService & RepeatService;
 
 export type OrdersServiceDeps = { repo: OrdersRepository; logger?: AppLogger };
 
@@ -141,10 +142,14 @@ const createDraftService = ({ repo }: OrdersServiceDeps): DraftService => ({
     }),
 });
 
-export const createOrdersService = (deps: OrdersServiceDeps): OrdersService => ({
-  ...createDraftService(deps),
-  ...createCheckoutService({ repo: deps.repo, logger: deps.logger ?? noopLogger }),
-});
+export const createOrdersService = (deps: OrdersServiceDeps): OrdersService => {
+  const shared = { repo: deps.repo, logger: deps.logger ?? noopLogger };
+  return {
+    ...createDraftService(deps),
+    ...createCheckoutService(shared),
+    ...createRepeatService(shared),
+  };
+};
 
 /** Wires the service to its Prisma repository and the request logger. */
 export const createOrdersServiceFromDeps = (

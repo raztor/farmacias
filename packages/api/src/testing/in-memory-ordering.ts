@@ -3,6 +3,7 @@ import type { FulfillmentType, OrderStatus } from "@repo/shared";
 import type { AuditEntryInput, AuditWriter } from "../modules/audit";
 import type { InventoryStore, StockMovementInput } from "../modules/inventory";
 import type { OrderRef, StatusEventInput, TransitionStore } from "../modules/orders";
+import type { RepeatSourceRecord } from "../modules/orders/order-repeat.repository";
 import type { DraftRecord, OrdersRepository, OrdersTx } from "../modules/orders/orders.repository";
 import type { DeliveryDetails } from "../modules/orders/orders.schema";
 import type { PaymentRecord } from "../modules/payments/payments.repository";
@@ -290,6 +291,22 @@ export class InMemoryOrdering {
         }
         return Promise.resolve();
       },
+      findRepeatSource: (orderId) => {
+        const order = this.state.orders.find((candidate) => candidate.id === orderId);
+        return Promise.resolve(order ? this.repeatSource(order) : null);
+      },
+    };
+  }
+
+  private repeatSource(order: MemOrder): RepeatSourceRecord {
+    return {
+      id: order.id,
+      residentId: order.residentId,
+      status: order.status,
+      lines: this.linesOf(order.id).map(({ productId, quantity }) => {
+        const { commercialName, presentation, priceClp, active, onHand } = this.product(productId);
+        return { productId, quantity, commercialName, presentation, priceClp, active, onHand };
+      }),
     };
   }
 
