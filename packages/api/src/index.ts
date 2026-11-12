@@ -20,6 +20,12 @@ export {
   type SetRoleInput,
 } from "./modules/admin";
 export {
+  type AdminListProductsInput,
+  type AdminProduct,
+  type AdminProductList,
+  type AdminProductStatus,
+  type CreateProductInput,
+  type UpdateProductInput,
   type CatalogSearchInput,
   type CatalogSearchResult,
   type ProductAvailability,
