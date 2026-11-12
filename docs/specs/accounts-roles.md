@@ -41,6 +41,9 @@ Definida una sola vez en `@repo/shared` (`PERMISSION_STATEMENTS`, `ROLE_PERMISSI
 | `operations`: read, transition                     |    —    |     —      |     ✅     |   ✅    | `operatorProcedure` |
 | `users`: list, set-role                            |    —    |     —      |     —      |   ✅    | `adminProcedure`    |
 | `audit`: read                                      |    —    |     —      |     —      |   ✅    | `adminProcedure`    |
+| `inventory`: read, adjust (Sprint 3, D-31)         |    —    |     —      |     ✅     |   ✅    | `operatorProcedure` |
+| `catalog`: write (Sprint 3, D-31)                  |    —    |     —      |     —      |   ✅    | `adminProcedure`    |
+| `reports`: read (Sprint 3, D-31)                   |    —    |     —      |     —      |   ✅    | `adminProcedure`    |
 | Better Auth `/admin/create-user` (solo `resident`) |    —    |     —      |     —      |   ✅    | endpoint del plugin |
 | Resto de Better Auth `/admin/*`, `/update-user`    |    —    |     —      |     —      |    —    | 404 (no expuestos)  |
 

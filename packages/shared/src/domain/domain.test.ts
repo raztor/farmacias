@@ -63,6 +63,11 @@ describe("domain value lists", () => {
       "stock.restore",
       "payment.stock_conflict",
       "user.role_change",
+      "stock.receipt",
+      "stock.adjustment",
+      "inventory.threshold_change",
+      "product.create",
+      "product.update",
     ]);
   });
 

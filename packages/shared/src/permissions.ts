@@ -16,6 +16,12 @@ export const PERMISSION_STATEMENTS = {
   users: ["list", "set-role"],
   /** Audit trail review. */
   audit: ["read"],
+  /** Back-office stock: list, movements and low-stock alerts (read); receipts, adjustments and thresholds (adjust). */
+  inventory: ["read", "adjust"],
+  /** Catalog maintenance: create and edit products and prices (HU-11). */
+  catalog: ["write"],
+  /** Operational reports (HU-13). */
+  reports: ["read"],
 } as const;
 
 export type PermissionStatements = typeof PERMISSION_STATEMENTS;
@@ -32,11 +38,15 @@ export const ROLE_PERMISSIONS = {
   },
   operator: {
     operations: ["read", "transition"],
+    inventory: ["read", "adjust"],
   },
   admin: {
     operations: ["read", "transition"],
+    inventory: ["read", "adjust"],
     users: ["list", "set-role"],
     audit: ["read"],
+    catalog: ["write"],
+    reports: ["read"],
   },
 } as const satisfies Record<Role, RolePermissions>;
 

@@ -18,15 +18,20 @@ Registrar los cambios críticos de stock, estado y permisos con actor, fecha, ho
 
 1. **R-AUD-01.** Cada cambio crítico escribe un `AuditLog` con `actor_id` (nulo para `system`), `actor_role`, `action`, `entity_type`, `entity_id`, `before`, `after` y `created_at`. _(RF-12, RNF-07)_
 2. **R-AUD-02.** El registro se escribe **en la misma transacción** que el cambio: si el cambio se revierte, el registro también; no existe un cambio crítico confirmado sin su registro. _(RNF-07, D-22)_
-3. **R-AUD-03.** Acciones del Must (lista cerrada `as const`):
+3. **R-AUD-03.** Acciones auditadas (lista cerrada `as const`, en sync con el CHECK `audit_logs_action_check`). Las cinco primeras son del Must; las demás, del Sprint 3:
 
-   | `action`                 | `entity_type` | Cuándo                                                | `before` / `after`                                                                      |
-   | ------------------------ | ------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
-   | `order.transition`       | `order`       | Toda transición aplicada (incluye pago y cancelación) | `{ status, version }`                                                                   |
-   | `stock.sale`             | `product`     | Descuento por pago aprobado                           | `{ onHand }` antes / después                                                            |
-   | `stock.restore`          | `product`     | Restauración por cancelación                          | `{ onHand }` antes / después                                                            |
-   | `payment.stock_conflict` | `order`       | Pago aprobado sin stock suficiente (D-09)             | `before: null`, `after: { paymentId, products: [{ productId, requested, available }] }` |
-   | `user.role_change`       | `user`        | `admin.setRole`                                       | `{ role }` antes / después                                                              |
+   | `action`                     | `entity_type` | Cuándo                                                | `before` / `after`                                                                      |
+   | ---------------------------- | ------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
+   | `order.transition`           | `order`       | Toda transición aplicada (incluye pago y cancelación) | `{ status, version }`                                                                   |
+   | `stock.sale`                 | `product`     | Descuento por pago aprobado                           | `{ onHand }` antes / después                                                            |
+   | `stock.restore`              | `product`     | Restauración por cancelación                          | `{ onHand }` antes / después                                                            |
+   | `payment.stock_conflict`     | `order`       | Pago aprobado sin stock suficiente (D-09)             | `before: null`, `after: { paymentId, products: [{ productId, requested, available }] }` |
+   | `user.role_change`           | `user`        | `admin.setRole`                                       | `{ role }` antes / después                                                              |
+   | `stock.receipt`              | `product`     | Recepción de stock (HU-10, D-25)                      | `{ onHand }` antes / después                                                            |
+   | `stock.adjustment`           | `product`     | Ajuste de stock con motivo (HU-10, D-25)              | `{ onHand }` antes / después                                                            |
+   | `inventory.threshold_change` | `product`     | Cambio de umbral de stock bajo (HU-12, D-26)          | `{ lowStockThreshold }` antes / después                                                 |
+   | `product.create`             | `product`     | Alta de producto (HU-11, D-28)                        | `before: null`, `after`: producto creado (incluye `priceClp`, `active`)                 |
+   | `product.update`             | `product`     | Edición de producto o precio (HU-11, D-28)            | producto antes / después (incluye `priceClp`, `active`)                                 |
 
 4. **R-AUD-04.** Los registros son de solo inserción: no existe procedimiento para editarlos ni borrarlos. _(RNF-07)_
 5. **R-AUD-05.** `before`/`after` solo contienen datos de dominio sintéticos; nunca contraseñas, tokens, cookies ni datos de pago. _(RNF-06, R-05)_
