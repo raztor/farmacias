@@ -12,11 +12,11 @@ const item = (label: string) => {
 };
 
 describe("navItemsFor", () => {
-  it("shows the queue, users and audit sections to admins", () => {
-    expect(labelsFor("admin")).toEqual(["Bandeja", "Usuarios", "Auditoría"]);
+  it("shows the queue, users, audit and reports sections to admins", () => {
+    expect(labelsFor("admin")).toEqual(["Bandeja", "Usuarios", "Auditoría", "Reportes"]);
   });
 
-  it("shows only the queue to operators (no Usuarios, no Auditoría)", () => {
+  it("shows only the queue to operators (no Usuarios, no Auditoría, no Reportes)", () => {
     expect(labelsFor("operator")).toEqual(["Bandeja"]);
   });
 
@@ -36,5 +36,6 @@ describe("isNavItemActive", () => {
     expect(isNavItemActive(item("Auditoría"), "/audit")).toBe(true);
     expect(isNavItemActive(item("Usuarios"), "/users/u1")).toBe(true);
     expect(isNavItemActive(item("Usuarios"), "/usersx")).toBe(false);
+    expect(isNavItemActive(item("Reportes"), "/reports")).toBe(true);
   });
 });
