@@ -19,7 +19,7 @@ export type ProductLabel = { id: string; sku: string; name: string; presentation
 /** Aggregated, read-only queries of the reports (R-REP-01, R-REP-02). */
 export type ReportsRepository = {
   dispensed: (window: ReportWindow, take: number) => Promise<DispensedTotals>;
-  /** Orders placed (`orders.created_at`, R-DAT-11) in the window, drafts excluded. */
+  /** Orders placed (`orders.created_at`, R-DAT-11) in the window: no drafts, no abandoned carts. */
   ordersByStatus: (window: ReportWindow) => Promise<StatusRow[]>;
   productLabels: (ids: readonly string[]) => Promise<ProductLabel[]>;
 };
@@ -62,7 +62,13 @@ export const createReportsRepository = (db: PrismaClient): ReportsRepository => 
   ordersByStatus: async ({ start, end }) => {
     const rows = await db.order.groupBy({
       by: ["status"],
-      where: { status: { not: "draft" }, createdAt: { gte: start, lt: end } },
+      where: {
+        status: { not: "draft" },
+        createdAt: { gte: start, lt: end },
+        // An abandoned cart (draft → cancelled) was never placed: its created_at is when the cart
+        // was opened (the placement trigger skips it), so it is not an order of the range.
+        events: { none: { fromStatus: "draft", toStatus: "cancelled" } },
+      },
       _count: { _all: true },
     });
     return rows.map((row) => ({ status: row.status, count: row._count._all }));

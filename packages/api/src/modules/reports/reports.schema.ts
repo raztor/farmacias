@@ -1,13 +1,17 @@
-import type { OrderStatus } from "@repo/shared";
+import {
+  INVALID_DAY_MESSAGE,
+  isCalendarDay,
+  reportRangeProblem,
+  type OrderStatus,
+} from "@repo/shared";
 import { z } from "zod";
 
 import type { AlertsResult } from "../inventory";
-import { INVALID_DAY_MESSAGE, isCalendarDay, rangeProblem } from "./reports-range";
 
 /** Products listed in the "most dispensed" ranking (R-REP-02). */
 export const TOP_PRODUCTS_LIMIT = 10;
 
-/** A calendar day in Chile, "YYYY-MM-DD" (the value of an `<input type="date">`). */
+/** A calendar day in Chile, "YYYY-MM-DD" between 2000 and 2100 (shared rule with the admin). */
 const reportDaySchema = z.string().trim().refine(isCalendarDay, INVALID_DAY_MESSAGE);
 
 /**
@@ -18,9 +22,13 @@ export const reportsSummaryInput = z
   .object({ from: reportDaySchema.optional(), to: reportDaySchema.optional() })
   .superRefine(({ from, to }, context) => {
     if (from === undefined || to === undefined) return;
-    const problem = rangeProblem(from, to);
-    if (problem)
-      context.addIssue({ code: "custom", path: [problem.field], message: problem.message });
+    const problem = reportRangeProblem(from, to);
+    if (problem) {
+      // One issue per field to fix (both for a reversed range), same message.
+      for (const field of problem.fields) {
+        context.addIssue({ code: "custom", path: [field], message: problem.message });
+      }
+    }
   });
 
 export type ReportsSummaryInput = z.output<typeof reportsSummaryInput>;

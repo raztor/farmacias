@@ -36,6 +36,10 @@ describe("reports router", () => {
     await expect(caller.reports.summary({ from: "11-11-2026" })).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
+    // Far years used to overflow the date arithmetic into a 500.
+    await expect(caller.reports.summary({ to: "9999-12-31" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
     expect(groupBy).not.toHaveBeenCalled();
   });
 });

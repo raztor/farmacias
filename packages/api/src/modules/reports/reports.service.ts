@@ -41,8 +41,8 @@ export const REPORTED_STATUSES = ORDER_STATUSES.filter((status) => status !== "d
 const resolveOrThrow = (input: ReportsSummaryInput, now: Date): ResolvedRange => {
   const resolution = resolveReportRange(input, now);
   if (resolution.ok) return resolution.range;
-  const { field, message } = resolution.problem;
-  throw new AppError("BAD_REQUEST", message, { details: { reason: "INVALID_RANGE", field } });
+  const { fields, message } = resolution.problem;
+  throw new AppError("BAD_REQUEST", message, { details: { reason: "INVALID_RANGE", fields } });
 };
 
 /** Zero-filled counts in state-machine order; unknown statuses (corrupt rows) are ignored. */

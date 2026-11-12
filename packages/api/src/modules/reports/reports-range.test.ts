@@ -1,40 +1,13 @@
+import { INVALID_DAY_MESSAGE, RANGE_ORDER_MESSAGE, RANGE_SPAN_MESSAGE } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 
 import {
-  INVALID_DAY_MESSAGE,
-  RANGE_ORDER_MESSAGE,
-  RANGE_SPAN_MESSAGE,
-  addDays,
-  isCalendarDay,
-  rangeLength,
-  rangeProblem,
+  FUTURE_LIMIT_MESSAGE,
   resolveReportRange,
   santiagoDayOf,
   startOfSantiagoDay,
 } from "./reports-range";
 import { reportsSummaryInput } from "./reports.schema";
-
-describe("calendar days", () => {
-  it("accepts real days only", () => {
-    expect(isCalendarDay("2026-02-28")).toBe(true);
-    expect(isCalendarDay("2028-02-29")).toBe(true);
-    expect(isCalendarDay("2026-02-29")).toBe(false);
-    expect(isCalendarDay("2026-13-01")).toBe(false);
-    expect(isCalendarDay("2026-1-01")).toBe(false);
-    expect(isCalendarDay("01-11-2026")).toBe(false);
-  });
-
-  it("moves across months and years and counts inclusive days", () => {
-    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
-    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
-    expect(rangeLength("2026-11-11", "2026-11-11")).toBe(1);
-    expect(rangeLength("2026-01-01", "2026-12-31")).toBe(365);
-  });
-
-  it("throws on an invalid day (callers validate first)", () => {
-    expect(() => addDays("2026-02-30", 1)).toThrow(RangeError);
-  });
-});
 
 describe("Chile's time zone (D-23)", () => {
   it("reads the calendar day in Chile, not in UTC", () => {
@@ -62,32 +35,6 @@ describe("Chile's time zone (D-23)", () => {
     const start = startOfSantiagoDay("2026-04-05");
     expect(start.toISOString()).toBe("2026-04-05T04:00:00.000Z");
     expect(santiagoDayOf(new Date(start.getTime() - 1))).toBe("2026-04-04");
-  });
-});
-
-describe("rangeProblem", () => {
-  it("accepts an ordered range of up to 366 days", () => {
-    expect(rangeProblem("2026-11-11", "2026-11-11")).toBeNull();
-    expect(rangeProblem("2027-01-01", "2028-01-01")).toBeNull();
-  });
-
-  it("rejects invalid days, reversed ranges and ranges longer than a year", () => {
-    expect(rangeProblem("2026-02-30", "2026-03-01")).toEqual({
-      field: "from",
-      message: INVALID_DAY_MESSAGE,
-    });
-    expect(rangeProblem("2026-03-01", "2026-02-30")).toEqual({
-      field: "to",
-      message: INVALID_DAY_MESSAGE,
-    });
-    expect(rangeProblem("2026-11-12", "2026-11-11")).toEqual({
-      field: "from",
-      message: RANGE_ORDER_MESSAGE,
-    });
-    expect(rangeProblem("2026-01-01", "2027-01-02")).toEqual({
-      field: "from",
-      message: RANGE_SPAN_MESSAGE,
-    });
   });
 });
 
@@ -119,18 +66,30 @@ describe("resolveReportRange", () => {
     });
   });
 
+  it("rejects an end beyond one year from today, and years outside 2000..2100", () => {
+    expect(resolveReportRange({ from: "2027-11-01", to: "2027-11-13" }, now)).toEqual({
+      ok: false,
+      problem: { fields: ["to"], message: FUTURE_LIMIT_MESSAGE },
+    });
+    expect(resolveReportRange({ to: "2027-11-12" }, now)).toMatchObject({ ok: true });
+    expect(resolveReportRange({ to: "9999-12-31" }, now)).toEqual({
+      ok: false,
+      problem: { fields: ["to"], message: INVALID_DAY_MESSAGE },
+    });
+  });
+
   it("reports a start after today or a too long window opened by one end", () => {
     expect(resolveReportRange({ from: "2026-12-01" }, now)).toEqual({
       ok: false,
-      problem: { field: "from", message: RANGE_ORDER_MESSAGE },
+      problem: { fields: ["from", "to"], message: RANGE_ORDER_MESSAGE },
     });
     expect(resolveReportRange({ from: "2024-01-01" }, now)).toEqual({
       ok: false,
-      problem: { field: "from", message: RANGE_SPAN_MESSAGE },
+      problem: { fields: ["from"], message: RANGE_SPAN_MESSAGE },
     });
     expect(resolveReportRange({ to: "2026-02-30" }, now)).toEqual({
       ok: false,
-      problem: { field: "to", message: INVALID_DAY_MESSAGE },
+      problem: { fields: ["to"], message: INVALID_DAY_MESSAGE },
     });
   });
 });
@@ -148,7 +107,10 @@ describe("reportsSummaryInput", () => {
     const reversed = reportsSummaryInput.safeParse({ from: "2026-11-12", to: "2026-11-11" });
     expect(reversed.error?.issues).toMatchObject([
       { path: ["from"], message: RANGE_ORDER_MESSAGE },
+      { path: ["to"], message: RANGE_ORDER_MESSAGE },
     ]);
+    const overflow = reportsSummaryInput.safeParse({ to: "9999-12-31" });
+    expect(overflow.error?.issues).toMatchObject([{ path: ["to"], message: INVALID_DAY_MESSAGE }]);
     const invalid = reportsSummaryInput.safeParse({ to: "2026-11-31" });
     expect(invalid.error?.issues).toMatchObject([{ path: ["to"], message: INVALID_DAY_MESSAGE }]);
   });
