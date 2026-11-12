@@ -101,6 +101,26 @@ test.describe("admin: reportes operativos (HU-13)", () => {
           .filter({ hasText: "La fecha «Desde» no puede ser posterior a la fecha «Hasta»." }),
       ).toBeVisible();
       await expect(page.getByRole("region", { name: "Pedidos por estado" })).toBeVisible();
+      const filters = page.getByRole("search", { name: "Rango de los reportes" });
+      await expect(filters.getByLabel("Desde")).toHaveAttribute("aria-invalid", "true");
+      await expect(filters.getByLabel("Hasta")).toHaveAttribute("aria-invalid", "true");
+    });
+
+    await test.step("una fecha inválida marca solo su campo", async () => {
+      await page.goto("/reports?from=2026-02-30");
+      const filters = page.getByRole("search", { name: "Rango de los reportes" });
+      await expect(filters.getByLabel("Desde")).toHaveAttribute("aria-invalid", "true");
+      await expect(filters.getByLabel("Hasta")).toHaveAttribute("aria-invalid", "false");
+    });
+
+    await test.step("un error de validación de la API no ofrece «Reintentar»", async () => {
+      // More than one year after today: only the API knows "today" and answers BAD_REQUEST.
+      const farEnd = `${String(Number(todayInChile().slice(0, 4)) + 2)}-06-15`;
+      await page.goto(`/reports?to=${farEnd}`);
+      await expect(
+        page.getByRole("alert").filter({ hasText: "como máximo un año después de hoy" }),
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
     });
   });
 

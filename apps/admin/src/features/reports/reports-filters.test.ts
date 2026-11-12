@@ -1,23 +1,7 @@
+import { INVALID_DAY_MESSAGE, RANGE_ORDER_MESSAGE, RANGE_SPAN_MESSAGE } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 
-import {
-  INVALID_DATE_MESSAGE,
-  RANGE_ORDER_MESSAGE,
-  hasActiveReportsFilters,
-  isCalendarDay,
-  parseReportsFilters,
-  toReportsInput,
-} from "./reports-filters";
-
-describe("isCalendarDay", () => {
-  it("accepts existing YYYY-MM-DD days only", () => {
-    expect(isCalendarDay("2026-11-11")).toBe(true);
-    expect(isCalendarDay("2028-02-29")).toBe(true);
-    expect(isCalendarDay("2026-02-29")).toBe(false);
-    expect(isCalendarDay("11-11-2026")).toBe(false);
-    expect(isCalendarDay("2026-11-1")).toBe(false);
-  });
-});
+import { hasActiveReportsFilters, parseReportsFilters, toReportsInput } from "./reports-filters";
 
 describe("parseReportsFilters", () => {
   it("uses the default range (no ends) without parameters", () => {
@@ -26,6 +10,7 @@ describe("parseReportsFilters", () => {
       filters: { from: null, to: null },
       input: { from: "", to: "" },
       error: null,
+      invalidFields: [],
     });
     expect(hasActiveReportsFilters(parsed)).toBe(false);
   });
@@ -45,18 +30,27 @@ describe("parseReportsFilters", () => {
     });
   });
 
-  it("reports an invalid date and falls back to the default range", () => {
+  it("marks only the invalid date and falls back to the default range", () => {
     const parsed = parseReportsFilters({ from: "2026-02-30", to: "2026-03-10" });
-    expect(parsed.error).toBe(INVALID_DATE_MESSAGE);
+    expect(parsed.error).toBe(INVALID_DAY_MESSAGE);
+    expect(parsed.invalidFields).toEqual(["from"]);
     expect(parsed.filters).toEqual({ from: null, to: null });
     expect(parsed.input).toEqual({ from: "2026-02-30", to: "2026-03-10" });
     expect(hasActiveReportsFilters(parsed)).toBe(true);
+    expect(parseReportsFilters({ to: "9999-12-31" }).invalidFields).toEqual(["to"]);
   });
 
-  it("reports a reversed range", () => {
+  it("marks both fields for a reversed range", () => {
     const parsed = parseReportsFilters({ from: "2026-11-12", to: "2026-11-11" });
     expect(parsed.error).toBe(RANGE_ORDER_MESSAGE);
+    expect(parsed.invalidFields).toEqual(["from", "to"]);
     expect(parsed.filters).toEqual({ from: null, to: null });
+  });
+
+  it("applies the same one-year limit as the API", () => {
+    const parsed = parseReportsFilters({ from: "2025-01-01", to: "2026-11-11" });
+    expect(parsed.error).toBe(RANGE_SPAN_MESSAGE);
+    expect(parsed.invalidFields).toEqual(["from"]);
   });
 
   it("uses the first value of a repeated parameter", () => {

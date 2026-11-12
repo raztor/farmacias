@@ -4,6 +4,7 @@ import { Text } from "@repo/ui";
 
 import { QueryError } from "../../components/query-error";
 import { isLoadingCurrentResults } from "../../lib/list-loading";
+import { isRetryableError } from "../../lib/trpc-errors";
 import { DispensedReport } from "./dispensed-report";
 import { LowStockReport } from "./low-stock-report";
 import { OrdersByStatusReport } from "./orders-by-status-report";
@@ -29,6 +30,7 @@ export function ReportsOverview({ filters }: Readonly<{ filters: ReportsFilters 
         <QueryError
           error={query.error}
           retrying={query.isRefetching}
+          canRetry={isRetryableError(query.error)}
           onRetry={() => {
             void query.refetch();
           }}

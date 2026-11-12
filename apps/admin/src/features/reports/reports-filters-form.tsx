@@ -58,14 +58,14 @@ export function ReportsFiltersForm({ parsed }: Readonly<{ parsed: ParsedReportsF
           label="Desde"
           name={REPORTS_PARAMS.from}
           value={parsed.input.from}
-          invalid={invalid}
+          invalid={parsed.invalidFields.includes("from")}
         />
         <DayField
           id="reports-to"
           label="Hasta"
           name={REPORTS_PARAMS.to}
           value={parsed.input.to}
-          invalid={invalid}
+          invalid={parsed.invalidFields.includes("to")}
         />
       </div>
       <p id={HINT_ID} className={FIELD_HINT_CLASSES}>
