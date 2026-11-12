@@ -1,9 +1,10 @@
 import type { Locator, Page } from "@playwright/test";
 
+import type { ApiSession } from "../support/api-session.ts";
 import { E2E_ACCOUNTS } from "../support/env.ts";
 import { expect, projectSlot, signInOnAdmin, test } from "../support/fixtures.ts";
 import { PRODUCT_LANES, pickProduct, stockOf } from "../support/orders-api.ts";
-import { trpcErrorCode } from "../support/trpc-http.ts";
+import { isRecord, trpcErrorCode } from "../support/trpc-http.ts";
 
 /**
  * Sub-lane of the inventory spec inside the admin-only `operatorFlow` lane: admin projects come
@@ -26,15 +27,25 @@ async function submitStockChange(
 
 const stockForm = (page: Page) => page.getByRole("form", { name: "Registrar recepción o ajuste" });
 
+/** Current low-stock threshold of a product (`inventory.product`, back office). */
+async function thresholdOf(operator: ApiSession, productId: string): Promise<number> {
+  const item: unknown = await operator.trpc.query("inventory.product", { productId });
+  const threshold = isRecord(item) ? item.lowStockThreshold : undefined;
+  if (typeof threshold !== "number") throw new Error("Unexpected inventory.product payload");
+  return threshold;
+}
+
 /**
- * HU-10 (D-25) in the back office: an operator finds a product in the inventory, registers a
- * receipt with its reason (stock, toast and ledger change), and a reasonless or negative
- * adjustment is rejected with a clear message without touching the stock.
+ * HU-10 (D-25) and HU-12 (D-26, D-27) in the back office: an operator finds a product in the
+ * inventory, registers a receipt with its reason (stock, toast and ledger change), a reasonless
+ * or negative adjustment is rejected with a clear message without touching the stock, and with
+ * its threshold at the current stock the product shows up in the low-stock alerts.
  */
-test.describe("admin: recepciones y ajustes de stock (HU-10)", () => {
-  test("registra una recepción y rechaza ajustes sin motivo o que dejarían stock negativo", async ({
+test.describe("admin: recepciones, ajustes y alertas de stock (HU-10, HU-12)", () => {
+  test("registra una recepción, rechaza ajustes inválidos y muestra la alerta de stock bajo", async ({
     page,
     publicApi,
+    operator,
     newResident,
   }, testInfo) => {
     const product = await pickProduct(publicApi, {
@@ -97,6 +108,40 @@ test.describe("admin: recepciones y ajustes de stock (HU-10)", () => {
           .filter({ hasText: "El ajuste dejaría el stock en negativo." }),
       ).toBeVisible();
       expect(await stockOf(publicApi, product.id)).toBe(before + 7);
+    });
+
+    await test.step("HU-12: con el umbral en el stock actual, el producto aparece en las alertas", async () => {
+      const original = await thresholdOf(operator, product.id);
+      const current = before + 7;
+      try {
+        const editor = page.getByRole("form", { name: "Umbral de stock bajo" });
+        await editor.getByLabel("Avisar con estas unidades o menos").fill(String(current));
+        await editor.getByRole("button", { name: "Guardar umbral" }).click();
+        await expect(
+          page.getByText(
+            `Umbral de ${product.commercialName} actualizado: alerta con ${String(current)} unidades o menos.`,
+          ),
+        ).toBeVisible();
+
+        await page
+          .getByRole("navigation", { name: "Navegación principal" })
+          .getByRole("link", { name: "Alertas de stock" })
+          .click();
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Alertas de stock" }),
+        ).toBeVisible();
+        const link = page.locator(`a[href="/inventory/${product.id}"]`);
+        await expect(link).toBeVisible();
+        const row = page.getByRole("row").filter({ has: link });
+        await expect(row).toContainText("Stock bajo");
+        await expect(row).toContainText(`${String(current)} unidades`);
+      } finally {
+        // Leaves the lane product as it was, so it never stays in the alerts of later runs.
+        await operator.trpc.mutation("inventory.setThreshold", {
+          productId: product.id,
+          threshold: original,
+        });
+      }
     });
 
     await test.step("una persona inscrita no puede ajustar stock por la API", async () => {

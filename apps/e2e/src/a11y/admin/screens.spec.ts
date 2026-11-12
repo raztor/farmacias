@@ -79,6 +79,14 @@ test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
       await check("admin-ficha-stock-errores", form.getByRole("alert").first());
     });
 
+    await test.step("alertas de stock bajo (HU-12)", async () => {
+      await page.goto("/stock-alerts");
+      await check(
+        "admin-alertas-stock",
+        page.getByRole("heading", { level: 1, name: "Alertas de stock" }),
+      );
+    });
+
     expect(problems, problems.join("\n")).toEqual([]);
   });
 });

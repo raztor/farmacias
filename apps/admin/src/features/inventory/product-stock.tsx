@@ -11,6 +11,7 @@ import { stockUnitsLabel } from "./inventory-format";
 import { MovementHistory } from "./movement-history";
 import { StockAdjustForm } from "./stock-adjust-form";
 import { StockLevelBadge } from "./stock-level-badge";
+import { ThresholdEditor } from "./threshold-editor";
 import { useProductStock } from "./use-inventory";
 
 function BackLink() {
@@ -50,7 +51,7 @@ function StockSummary({ item }: Readonly<{ item: InventoryItemView }>) {
   );
 }
 
-/** Stock page of a product (HU-10): summary, receipt/adjustment form and ledger. */
+/** Stock page of a product (HU-10, HU-12): summary, receipt/adjustment, threshold and ledger. */
 export function ProductStock({ productId }: Readonly<{ productId: string }>) {
   const query = useProductStock(productId);
 
@@ -86,6 +87,8 @@ export function ProductStock({ productId }: Readonly<{ productId: string }>) {
       <BackLink />
       <StockSummary item={item} />
       <StockAdjustForm item={item} />
+      {/* Keyed by the saved value so the field shows it after each change. */}
+      <ThresholdEditor key={item.lowStockThreshold} item={item} />
       <MovementHistory productId={item.productId} />
     </div>
   );

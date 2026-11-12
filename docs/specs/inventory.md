@@ -103,6 +103,7 @@ API interna (vía `index.ts`), siempre dentro de la transacción del llamador (`
 | INV-I12 | int   | Cambio de umbral auditado (`inventory.threshold_change`) y el producto entra en las alertas                                                                                      | HU-12 #1, R-INV-17                     | `packages/api/src/modules/inventory/inventory-admin.int.test.ts`     |
 | INV-I13 | int   | Listado: paginación por nombre, búsqueda sin tildes y por SKU, filtro de stock bajo                                                                                              | R-INV-19                               | `packages/api/src/modules/inventory/inventory-admin.int.test.ts`     |
 | INV-E01 | e2e   | Backoffice: busca el producto, registra una recepción (aviso, historial y stock) y rechaza un ajuste sin motivo y otro que dejaría stock negativo; `resident` recibe `FORBIDDEN` | HU-10 #1, #2                           | `apps/e2e/src/admin/inventory.spec.ts`                               |
+| INV-E02 | e2e   | Backoffice: el umbral del producto queda en su stock actual (aviso) y el producto aparece en «Alertas de stock» como «Stock bajo»; luego se restaura el umbral                   | HU-12 #1                               | `apps/e2e/src/admin/inventory.spec.ts`                               |
 
 ## 8. Trazabilidad
 
