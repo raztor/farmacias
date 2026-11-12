@@ -8,18 +8,18 @@ Estas especificaciones (specs) son el **contrato funcional** de cada módulo del
 
 ## Índice
 
-| Spec                                    | Módulo (código)                                           | Historias           | Requisitos                                                | Issues        |
-| --------------------------------------- | --------------------------------------------------------- | ------------------- | --------------------------------------------------------- | ------------- |
-| [Catálogo](./catalog.md)                | `packages/api/src/modules/catalog`                        | HU-01               | RF-01, RF-02, RNF-01, RNF-02, RNF-04, RNF-06              | #10, #33      |
-| [Cuentas y roles](./accounts-roles.md)  | `packages/auth`, `packages/api/src/trpc`, `modules/admin` | HU-02               | RF-03, RNF-05, RNF-06, RNF-07, RNF-09                     | #11, #26      |
-| [Pedidos](./orders.md)                  | `packages/api/src/modules/orders`                         | HU-03, HU-04        | RF-04, RF-05, RNF-05, RNF-06, RNF-09                      | #12, #13      |
-| [Estados del pedido](./order-status.md) | `packages/api/src/modules/order-status`                   | HU-05, HU-08, HU-09 | RF-07, RF-10, RF-12, RNF-07                               | #14, #17      |
-| [Pagos simulados](./payments.md)        | `packages/api/src/modules/payments`                       | HU-05, HU-06        | RF-06, RF-07, RF-08, RNF-08, RNF-11                       | #14, #15      |
-| [Inventario](./inventory.md)            | `packages/api/src/modules/inventory`                      | HU-06, HU-10, HU-12 | RF-07, RF-08, RF-12, RF-13, RF-15, RNF-07, RNF-08, RNF-11 | #15, #19, #21 |
-| [Operación](./operations.md)            | `packages/api/src/modules/operations`                     | HU-07, HU-08        | RF-09, RF-10, RF-12, RNF-05, RNF-07                       | #16, #17      |
-| [Seguimiento](./tracking.md)            | `packages/api/src/modules/tracking`                       | HU-09               | RF-11, RNF-05, RNF-06                                     | #18           |
-| [Auditoría](./audit.md)                 | `packages/api/src/modules/audit`                          | HU-06, HU-08        | RF-12, RNF-07                                             | #15, #17      |
-| [Reportes](./reports.md)                | `packages/api/src/modules/reports`                        | HU-13               | RF-16, RNF-05, RNF-06                                     | #22           |
+| Spec                                    | Módulo (código)                                           | Historias           | Requisitos                                                  | Issues        |
+| --------------------------------------- | --------------------------------------------------------- | ------------------- | ----------------------------------------------------------- | ------------- |
+| [Catálogo](./catalog.md)                | `packages/api/src/modules/catalog`                        | HU-01, HU-11        | RF-01, RF-02, RF-14, RNF-01, RNF-02, RNF-04, RNF-05, RNF-06 | #10, #20, #33 |
+| [Cuentas y roles](./accounts-roles.md)  | `packages/auth`, `packages/api/src/trpc`, `modules/admin` | HU-02               | RF-03, RNF-05, RNF-06, RNF-07, RNF-09                       | #11, #26      |
+| [Pedidos](./orders.md)                  | `packages/api/src/modules/orders`                         | HU-03, HU-04        | RF-04, RF-05, RNF-05, RNF-06, RNF-09                        | #12, #13      |
+| [Estados del pedido](./order-status.md) | `packages/api/src/modules/order-status`                   | HU-05, HU-08, HU-09 | RF-07, RF-10, RF-12, RNF-07                                 | #14, #17      |
+| [Pagos simulados](./payments.md)        | `packages/api/src/modules/payments`                       | HU-05, HU-06        | RF-06, RF-07, RF-08, RNF-08, RNF-11                         | #14, #15      |
+| [Inventario](./inventory.md)            | `packages/api/src/modules/inventory`                      | HU-06, HU-10, HU-12 | RF-07, RF-08, RF-12, RF-13, RF-15, RNF-07, RNF-08, RNF-11   | #15, #19, #21 |
+| [Operación](./operations.md)            | `packages/api/src/modules/operations`                     | HU-07, HU-08        | RF-09, RF-10, RF-12, RNF-05, RNF-07                         | #16, #17      |
+| [Seguimiento](./tracking.md)            | `packages/api/src/modules/tracking`                       | HU-09               | RF-11, RNF-05, RNF-06                                       | #18           |
+| [Auditoría](./audit.md)                 | `packages/api/src/modules/audit`                          | HU-06, HU-08        | RF-12, RNF-07                                               | #15, #17      |
+| [Reportes](./reports.md)                | `packages/api/src/modules/reports`                        | HU-13               | RF-16, RNF-05, RNF-06                                       | #22           |
 
 Diagramas UML: Mermaid dentro de cada spec (se ven en GitHub) y fuentes PlantUML en [`docs/uml`](../uml/README.md).
 

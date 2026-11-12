@@ -1,8 +1,19 @@
 /** Modules composed by the `(admin)` routes (keeps route files within two `../` levels). */
 export { AdminNav } from "../../components/admin-nav";
+export { ButtonLink } from "../../components/button-link";
 export { PageHeader } from "../../components/page-header";
 export { AuditFiltersForm, AuditList, parseAuditFilters } from "../../features/audit";
 export { ForbiddenScreen, SignOutButton } from "../../features/auth";
+export { EditProduct, NEW_PRODUCT_PATH, NewProduct, ProductsPanel } from "../../features/catalog";
+export {
+  InventoryFiltersForm,
+  InventoryList,
+  ProductStock,
+  StockAlerts,
+  StockAlertsLink,
+  inventorySearch,
+  parseInventoryFilters,
+} from "../../features/inventory";
 export {
   OrderDetail,
   OrdersQueue,
