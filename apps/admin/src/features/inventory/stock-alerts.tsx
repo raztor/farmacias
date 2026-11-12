@@ -12,10 +12,16 @@ import { useStockAlerts } from "./use-inventory";
 /** Back-office alerts page. */
 export const STOCK_ALERTS_PATH = "/stock-alerts";
 
-/** Count pill of the alerts (text, never color only). */
+/**
+ * Count pill of the alerts (text, never color only). Hidden from screen readers: next to it there
+ * is always a sentence with the count ({@link alertsCountText}), so the bare number is not read.
+ */
 function AlertsBadge({ total }: Readonly<{ total: number }>) {
   return (
-    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-warning bg-warning px-2 text-xs font-semibold text-warning-foreground">
+    <span
+      aria-hidden="true"
+      className="inline-flex min-w-6 items-center justify-center rounded-full border border-warning bg-warning px-2 text-xs font-semibold text-warning-foreground"
+    >
       {total}
     </span>
   );
@@ -63,12 +69,13 @@ export function StockAlerts() {
   const items = query.data?.items ?? [];
   return (
     <section aria-labelledby="stock-alerts-title" className="flex flex-col gap-4">
-      <h2
-        id="stock-alerts-title"
-        className="flex flex-row items-center gap-2 text-lg font-semibold"
-      >
-        Productos con stock bajo {query.isSuccess ? <AlertsBadge total={total} /> : null}
-      </h2>
+      {/* The badge sits next to the heading, so the heading reads without the number. */}
+      <div className="flex flex-row items-center gap-2">
+        <h2 id="stock-alerts-title" className="text-lg font-semibold">
+          Productos con stock bajo
+        </h2>
+        {query.isSuccess ? <AlertsBadge total={total} /> : null}
+      </div>
       <Text role="status" variant="muted" aria-live="polite">
         {query.isPending ? "Cargando alertas…" : alertsCountText(total)}
         {items.length < total ? ` Se muestran los primeros ${String(items.length)}.` : ""}

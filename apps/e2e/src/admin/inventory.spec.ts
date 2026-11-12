@@ -13,6 +13,9 @@ import { isRecord, trpcErrorCode } from "../support/trpc-http.ts";
  */
 const INVENTORY_LANE_OFFSET = 5;
 
+/** Largest low-stock threshold the API accepts (D-26). */
+const LOW_STOCK_THRESHOLD_MAX = 999;
+
 /** Fills and submits the receipt / adjustment form of the product stock page. */
 async function submitStockChange(
   form: Locator,
@@ -41,7 +44,24 @@ async function thresholdOf(operator: ApiSession, productId: string): Promise<num
  * or negative adjustment is rejected with a clear message without touching the stock, and with
  * its threshold at the current stock the product shows up in the low-stock alerts.
  */
+/** Units the receipt added, undone after the test (one test at a time per worker). */
+let receivedUnits: Readonly<{ productId: string; units: number }> | null = null;
+
 test.describe("admin: recepciones, ajustes y alertas de stock (HU-10, HU-12)", () => {
+  // On a persistent E2E database the lane product must not grow run after run (the threshold
+  // step needs its stock within 0..999): the receipt is reverted even when the test fails.
+  test.afterEach(async ({ operator }) => {
+    if (receivedUnits === null) return;
+    const { productId, units } = receivedUnits;
+    receivedUnits = null;
+    await operator.trpc.mutation("inventory.adjust", {
+      productId,
+      kind: "adjustment",
+      delta: -units,
+      reason: "Revierte la recepción de la prueba E2E",
+    });
+  });
+
   test("registra una recepción, rechaza ajustes inválidos y muestra la alerta de stock bajo", async ({
     page,
     publicApi,
@@ -80,6 +100,7 @@ test.describe("admin: recepciones, ajustes y alertas de stock (HU-10, HU-12)", (
           `Recepción registrada para ${product.commercialName} (+7 unidades). Stock actual: ${String(before + 7)} unidades.`,
         ),
       ).toBeVisible();
+      receivedUnits = { productId: product.id, units: 7 };
       const history = page.getByRole("region", { name: "Historial de movimientos" });
       const row = history.getByRole("row").filter({ hasText: reason });
       await expect(row).toContainText("Recepción");
@@ -113,13 +134,16 @@ test.describe("admin: recepciones, ajustes y alertas de stock (HU-10, HU-12)", (
     await test.step("HU-12: con el umbral en el stock actual, el producto aparece en las alertas", async () => {
       const original = await thresholdOf(operator, product.id);
       const current = before + 7;
+      // The receipt is reverted after every run, so the stock stays in the threshold range.
+      const threshold = Math.min(current, LOW_STOCK_THRESHOLD_MAX);
+      expect(current, "stock del producto del carril dentro del rango del umbral").toBe(threshold);
       try {
         const editor = page.getByRole("form", { name: "Umbral de stock bajo" });
-        await editor.getByLabel("Avisar con estas unidades o menos").fill(String(current));
+        await editor.getByLabel("Avisar con estas unidades o menos").fill(String(threshold));
         await editor.getByRole("button", { name: "Guardar umbral" }).click();
         await expect(
           page.getByText(
-            `Umbral de ${product.commercialName} actualizado: alerta con ${String(current)} unidades o menos.`,
+            `Umbral de ${product.commercialName} actualizado: alerta con ${String(threshold)} unidades o menos.`,
           ),
         ).toBeVisible();
 
