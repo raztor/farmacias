@@ -11,11 +11,13 @@ import { RequireSignIn } from "../auth";
 import { CancelOrder } from "./cancel-order";
 import { OrderDelivery, OrderHistory, OrderLines } from "./order-detail-sections";
 import { OrderStatusBadge } from "./order-status-badge";
-import { canCancel, canPay } from "./order-status-view";
+import { canCancel, canPay, canRepeat } from "./order-status-view";
+import { RepeatOrderButton } from "./repeat-order-button";
 import { useOrderDetail } from "./use-orders";
 
 function OrderActions({ order }: Readonly<{ order: MyOrderDetail }>) {
-  if (!canPay(order.status) && !canCancel(order.status)) return null;
+  // Paying and cancelling also require a placed order, so a draft shows no actions.
+  if (!canRepeat(order.status)) return null;
   return (
     <View className="gap-3">
       {canPay(order.status) ? (
@@ -27,11 +29,14 @@ function OrderActions({ order }: Readonly<{ order: MyOrderDetail }>) {
           </Button>
         </Link>
       ) : null}
-      <CancelOrder
-        orderId={order.id}
-        version={order.version}
-        paid={order.status === "payment_validated"}
-      />
+      {canRepeat(order.status) ? <RepeatOrderButton order={order} /> : null}
+      {canCancel(order.status) ? (
+        <CancelOrder
+          orderId={order.id}
+          version={order.version}
+          paid={order.status === "payment_validated"}
+        />
+      ) : null}
     </View>
   );
 }
