@@ -1,4 +1,8 @@
 export { createInventoryStore, type InventoryClient } from "./inventory.repository";
+export {
+  createInventoryAdminServiceFromDeps,
+  type InventoryAdminService,
+} from "./inventory-admin.service";
 export { inventoryRouter } from "./inventory.router";
 export {
   type AlertsResult,
