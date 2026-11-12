@@ -1,9 +1,10 @@
-import type { Prisma, PrismaClient } from "@repo/db";
+import { Prisma, type PrismaClient } from "@repo/db";
 import { isStockMovementReason, toRole, type ActorRole } from "@repo/shared";
 
 import { INTERACTIVE_TRANSACTION_OPTIONS } from "../../lib/transactions";
 import { createAuditWriter } from "../audit";
 import { createInventoryStore } from "./inventory.repository";
+import type { ListCursor, MovementCursor } from "./inventory-cursor";
 import type { InventoryItemView, StockMovementView } from "./inventory.schema";
 import type { InventoryDeps } from "./inventory.service";
 
@@ -12,7 +13,8 @@ export type InventoryRecord = Omit<InventoryItemView, "level">;
 
 export type InventoryListQuery = {
   take: number;
-  cursor?: string | undefined;
+  /** Sort key of the last row of the previous page: rows strictly after it. */
+  cursor?: ListCursor | undefined;
   /** `normalizeSearchText` of the search, matched against `products.search_text`. */
   term?: string | undefined;
   /** The search as typed (trimmed), matched against the SKU. */
@@ -20,7 +22,12 @@ export type InventoryListQuery = {
   onlyLow: boolean;
 };
 
-export type MovementsQuery = { productId: string; take: number; cursor?: string | undefined };
+export type MovementsQuery = {
+  productId: string;
+  take: number;
+  /** Sort key of the last movement of the previous page: older movements only. */
+  cursor?: MovementCursor | undefined;
+};
 
 /** Read side of the back-office stock (no transaction). */
 export type InventoryReader = {
@@ -85,6 +92,30 @@ const searchWhere = ({ term, sku }: InventoryListQuery): Prisma.InventoryItemWhe
   return or.length === 0 ? {} : { product: { OR: or } };
 };
 
+/** Keyset condition: (name, id) strictly after the cursor, in `BY_NAME` order. */
+const afterListCursor = (cursor: ListCursor | undefined): Prisma.InventoryItemWhereInput =>
+  cursor
+    ? {
+        OR: [
+          { product: { commercialName: { gt: cursor.name } } },
+          { product: { commercialName: cursor.name }, productId: { gt: cursor.productId } },
+        ],
+      }
+    : {};
+
+/** Keyset condition: (createdAt, id) strictly before the cursor (newest first). */
+const beforeMovementCursor = (
+  cursor: MovementCursor | undefined,
+): Prisma.StockMovementWhereInput =>
+  cursor
+    ? {
+        OR: [
+          { createdAt: { lt: cursor.createdAt } },
+          { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+        ],
+      }
+    : {};
+
 const MOVEMENT_SELECT = {
   id: true,
   reason: true,
@@ -117,10 +148,15 @@ const toMovement = ({ order, actor, reason, ...row }: MovementRow): StockMovemen
 export const createInventoryReader = (db: PrismaClient): InventoryReader => ({
   list: async (query) => {
     const rows = await db.inventoryItem.findMany({
-      where: { AND: [searchWhere(query), query.onlyLow ? lowStockWhere(db) : {}] },
+      where: {
+        AND: [
+          searchWhere(query),
+          query.onlyLow ? lowStockWhere(db) : {},
+          afterListCursor(query.cursor),
+        ],
+      },
       orderBy: BY_NAME,
       take: query.take,
-      ...(query.cursor ? { cursor: { productId: query.cursor }, skip: 1 } : {}),
       select: ITEM_SELECT,
     });
     return rows.map(toRecord);
@@ -133,10 +169,9 @@ export const createInventoryReader = (db: PrismaClient): InventoryReader => ({
 
   movements: async ({ productId, take, cursor }) => {
     const rows = await db.stockMovement.findMany({
-      where: { productId },
+      where: { AND: [{ productId }, beforeMovementCursor(cursor)] },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: MOVEMENT_SELECT,
     });
     return rows.map(toMovement);
@@ -144,15 +179,19 @@ export const createInventoryReader = (db: PrismaClient): InventoryReader => ({
 
   alerts: async (take) => {
     const where = { AND: [lowStockWhere(db), { product: { active: true } }] };
-    const [rows, total] = await Promise.all([
-      db.inventoryItem.findMany({
-        where,
-        orderBy: [{ onHand: "asc" }, ...BY_NAME],
-        take,
-        select: ITEM_SELECT,
-      }),
-      db.inventoryItem.count({ where }),
-    ]);
+    // REPEATABLE READ: both statements read the same snapshot, so the total matches the rows.
+    const [rows, total] = await db.$transaction(
+      [
+        db.inventoryItem.findMany({
+          where,
+          orderBy: [{ onHand: "asc" }, ...BY_NAME],
+          take,
+          select: ITEM_SELECT,
+        }),
+        db.inventoryItem.count({ where }),
+      ],
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
     return { items: rows.map(toRecord), total };
   },
 });

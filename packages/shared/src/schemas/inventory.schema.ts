@@ -51,7 +51,11 @@ export function stockDeltaIssue(kind: StockChangeKind, delta: number): string | 
 /** Input of `inventory.adjust`: a receipt or an adjustment of one product (HU-10, D-25). */
 export const stockAdjustmentSchema = z
   .object({
-    productId: z.string().trim().min(1, { error: "Selecciona un producto." }),
+    productId: z
+      .string()
+      .trim()
+      .min(1, { error: "Selecciona un producto." })
+      .max(64, { error: "Identificador de producto demasiado largo." }),
     kind: stockChangeKindSchema,
     delta: stockDeltaSchema,
     reason: stockReasonSchema,

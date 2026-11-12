@@ -8,6 +8,8 @@ import {
 } from "@repo/shared";
 import { z } from "zod";
 
+import { listCursorSchema, movementCursorSchema } from "./inventory-cursor";
+
 /** Same bound as the users search of the back office. */
 export const INVENTORY_SEARCH_MAX_LENGTH = 100;
 
@@ -23,6 +25,7 @@ const productIdSchema = z.string().trim().min(1, { error: "Selecciona un product
  * ingredient, presentation or SKU) and `onlyLow` (stock at or under the threshold).
  */
 export const listInventoryInput = paginationSchema.extend({
+  cursor: listCursorSchema.optional(),
   search: z
     .string()
     .trim()
@@ -37,7 +40,10 @@ export const adjustStockInput = stockAdjustmentSchema;
 export type AdjustStockInput = z.output<typeof adjustStockInput>;
 
 /** Input of `inventory.movements`: one product's ledger, newest first. */
-export const movementsInput = paginationSchema.extend({ productId: productIdSchema });
+export const movementsInput = paginationSchema.extend({
+  productId: productIdSchema,
+  cursor: movementCursorSchema.optional(),
+});
 export type MovementsInput = z.output<typeof movementsInput>;
 
 /** Input of `inventory.product`: the stock card of one product. */
