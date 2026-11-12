@@ -23,6 +23,8 @@ export type UseFormResult<TValues extends FormValues, TOutput> = {
   fieldProps: (field: keyof TValues & string) => FieldProps;
   /** Validates every field; returns the parsed data or `null` (and shows the errors). */
   validate: () => TOutput | null;
+  /** Shows an error the server found on a field (e.g. a value already in use). */
+  setFieldError: (field: keyof TValues & string, message: string) => void;
 };
 
 const withoutKey = <T extends Record<string, unknown>>(record: T, key: string): T =>
@@ -55,5 +57,9 @@ export function useForm<TSchema extends z.ZodType, TValues extends FormValues>(
     return result.success ? result.data : null;
   }, [schema, values]);
 
-  return { values, errors, setField, fieldProps, validate };
+  const setFieldError = useCallback((field: keyof TValues & string, message: string) => {
+    setErrors((current) => ({ ...current, [field]: message }));
+  }, []);
+
+  return { values, errors, setField, fieldProps, validate, setFieldError };
 }

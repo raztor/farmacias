@@ -1,3 +1,4 @@
+import { isE2eProduct } from "../support/catalog-api.ts";
 import { expect, projectSlot, test } from "../support/fixtures.ts";
 import { catalogProducts } from "../support/orders-api.ts";
 import { hasDiacritics, stripDiacritics } from "../support/search-terms.ts";
@@ -14,8 +15,9 @@ test.describe("mobile-web: buscador del catálogo (HU-01)", () => {
   }, testInfo) => {
     // A product whose active ingredient has an accent (Losartán, Bupropión…), so the term below
     // really drops one. Read-only test: no lane needed, each project takes a different one.
-    const accented = (await catalogProducts(publicApi)).filter((item) =>
-      hasDiacritics(item.activeIngredient),
+    // Temporary products of the catalog maintenance spec come and go mid-run: never picked.
+    const accented = (await catalogProducts(publicApi)).filter(
+      (item) => hasDiacritics(item.activeIngredient) && !isE2eProduct(item),
     );
     const product = accented[projectSlot(testInfo) % accented.length];
     if (product === undefined) throw new Error("The seed catalog has no accented ingredient");
