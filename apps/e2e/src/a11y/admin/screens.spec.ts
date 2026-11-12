@@ -17,7 +17,7 @@ const ADMIN_LANE_OFFSET = 8;
  * horizontal scroll. Order status is shown as text plus a symbol, never only as a color.
  */
 test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
-  test("inicio de sesión, bandeja, detalle, confirmación, usuarios y auditoría", async ({
+  test("inicio de sesión, bandeja, detalle, confirmación, usuarios, catálogo, auditoría e inventario", async ({
     page,
     publicApi,
     newResident,
@@ -62,9 +62,49 @@ test.describe("a11y admin: pantallas críticas (axe + zoom 200 %)", () => {
       await expect(page.getByRole("combobox", { name: /^Rol de / }).first()).toBeVisible();
     });
 
+    await test.step("catálogo: listado, nuevo producto y edición (HU-11, solo administración)", async () => {
+      await page.goto("/catalog");
+      const list = page.getByRole("heading", { level: 1, name: "Catálogo" });
+      await check("admin-catalogo", list);
+      // Status as text (SC 1.4.1): «Activo» / «Inactivo» in each row, never color only.
+      await expect(page.getByRole("row").nth(1)).toContainText(/Activo|Inactivo/);
+      await page.goto("/catalog/new");
+      await check("admin-catalogo-nuevo", page.getByRole("form", { name: "Nuevo producto" }));
+      // Viewing only (never saved): the lane product keeps its data and price.
+      await page.goto(`/catalog/${product.id}`);
+      await check("admin-catalogo-editar", page.getByRole("button", { name: "Guardar cambios" }));
+    });
+
     await test.step("auditoría (solo administración)", async () => {
       await page.goto("/audit");
       await check("admin-auditoria", page.getByRole("heading", { level: 1, name: "Auditoría" }));
+    });
+
+    await test.step("inventario y ficha de stock (HU-10)", async () => {
+      await page.goto(`/inventory?q=${encodeURIComponent(product.commercialName)}`);
+      await check("admin-inventario", page.locator(`a[href="/inventory/${product.id}"]`));
+      await page.goto(`/inventory/${product.id}`);
+      const form = page.getByRole("form", { name: "Registrar recepción o ajuste" });
+      await check("admin-ficha-stock", form);
+      // Errors are announced and tied to their field (SC 3.3.1, 4.1.3).
+      await form.getByRole("button", { name: "Registrar recepción" }).click();
+      await expect(form.getByLabel("Cantidad de unidades")).toHaveAttribute("aria-invalid", "true");
+      await check("admin-ficha-stock-errores", form.getByRole("alert").first());
+    });
+
+    await test.step("alertas de stock bajo (HU-12)", async () => {
+      await page.goto("/stock-alerts");
+      await check(
+        "admin-alertas-stock",
+        page.getByRole("heading", { level: 1, name: "Alertas de stock" }),
+      );
+    });
+
+    await test.step("reportes (solo administración, HU-13)", async () => {
+      await page.goto("/reports");
+      await check("admin-reportes", page.getByRole("region", { name: "Pedidos por estado" }));
+      // Counts as text in accessible tables (caption + header cells), not only as cards.
+      await expect(page.getByRole("table", { name: /por estado actual/ })).toBeVisible();
     });
 
     expect(problems, problems.join("\n")).toEqual([]);

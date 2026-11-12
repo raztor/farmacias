@@ -18,6 +18,17 @@ export function isConflictError(error: unknown): boolean {
 }
 
 /**
+ * `false` for client errors (4xx: invalid input, forbidden, not found…): retrying the same request
+ * gives the same answer, so the screen should not offer «Reintentar». Network and server errors
+ * are worth retrying.
+ */
+export function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof TRPCClientError)) return true;
+  const status = getHttpStatus(error as TRPCClientError<never>);
+  return status === undefined || status < 400 || status >= 500;
+}
+
+/**
  * User-facing message for a tRPC error. Client errors (4xx) carry messages written for users by
  * the API (validation messages come from the shared Spanish schemas); anything else is generic.
  */

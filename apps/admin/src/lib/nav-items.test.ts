@@ -12,12 +12,20 @@ const item = (label: string) => {
 };
 
 describe("navItemsFor", () => {
-  it("shows the queue, users and audit sections to admins", () => {
-    expect(labelsFor("admin")).toEqual(["Bandeja", "Usuarios", "Auditoría"]);
+  it("shows the queue, inventory, alerts, catalog, users, audit and reports sections to admins", () => {
+    expect(labelsFor("admin")).toEqual([
+      "Bandeja",
+      "Inventario",
+      "Alertas de stock",
+      "Catálogo",
+      "Usuarios",
+      "Auditoría",
+      "Reportes",
+    ]);
   });
 
-  it("shows only the queue to operators (no Usuarios, no Auditoría)", () => {
-    expect(labelsFor("operator")).toEqual(["Bandeja"]);
+  it("shows the queue, inventory and alerts to operators (no Catálogo, Usuarios, Auditoría nor Reportes)", () => {
+    expect(labelsFor("operator")).toEqual(["Bandeja", "Inventario", "Alertas de stock"]);
   });
 
   it("shows nothing to residents (they get the 'Sin acceso' page anyway)", () => {
@@ -36,5 +44,9 @@ describe("isNavItemActive", () => {
     expect(isNavItemActive(item("Auditoría"), "/audit")).toBe(true);
     expect(isNavItemActive(item("Usuarios"), "/users/u1")).toBe(true);
     expect(isNavItemActive(item("Usuarios"), "/usersx")).toBe(false);
+    expect(isNavItemActive(item("Inventario"), "/inventory/p-1")).toBe(true);
+    expect(isNavItemActive(item("Catálogo"), "/catalog/new")).toBe(true);
+    expect(isNavItemActive(item("Catálogo"), "/catalog/prod-1")).toBe(true);
+    expect(isNavItemActive(item("Reportes"), "/reports")).toBe(true);
   });
 });

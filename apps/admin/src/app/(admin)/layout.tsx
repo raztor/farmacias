@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       </a>
       <header className="border-b border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex flex-row items-center gap-6">
+          <div className="flex flex-row flex-wrap items-center gap-x-6 gap-y-2">
             <Link href="/" className="text-lg font-semibold text-primary">
               {APP_NAME} · Admin
             </Link>
