@@ -105,6 +105,7 @@ API interna (vía `index.ts`), siempre dentro de la transacción del llamador (`
 | INV-I14 | int   | Paginación por clave: si el último producto de una página deja de estar bajo el umbral, la siguiente no se salta filas; historial paginado sin huecos                            | R-INV-16, R-INV-19                     | `packages/api/src/modules/inventory/inventory-pagination.int.test.ts` |
 | INV-U10 | unit  | Cursores opacos: ida y vuelta (con tildes y milisegundos) y rechazo de cursores ajenos con mensaje de validación                                                                 | R-INV-19                               | `packages/api/src/modules/inventory/inventory-cursor.test.ts`         |
 | INV-E01 | e2e   | Backoffice: busca el producto, registra una recepción (aviso, historial y stock) y rechaza un ajuste sin motivo y otro que dejaría stock negativo; `resident` recibe `FORBIDDEN` | HU-10 #1, #2                           | `apps/e2e/src/admin/inventory.spec.ts`                                |
+| INV-E02 | e2e   | Backoffice: el umbral del producto queda en su stock actual (aviso) y el producto aparece en «Alertas de stock» como «Stock bajo»; luego se restaura el umbral                   | HU-12 #1                               | `apps/e2e/src/admin/inventory.spec.ts`                                |
 
 ## 8. Trazabilidad
 

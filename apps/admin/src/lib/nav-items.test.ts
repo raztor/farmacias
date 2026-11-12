@@ -12,18 +12,19 @@ const item = (label: string) => {
 };
 
 describe("navItemsFor", () => {
-  it("shows the queue, inventory, catalog, users and audit sections to admins", () => {
+  it("shows the queue, inventory, alerts, catalog, users and audit sections to admins", () => {
     expect(labelsFor("admin")).toEqual([
       "Bandeja",
       "Inventario",
+      "Alertas de stock",
       "Catálogo",
       "Usuarios",
       "Auditoría",
     ]);
   });
 
-  it("shows the queue and inventory to operators (no Catálogo, Usuarios nor Auditoría)", () => {
-    expect(labelsFor("operator")).toEqual(["Bandeja", "Inventario"]);
+  it("shows the queue, inventory and alerts to operators (no Catálogo, Usuarios nor Auditoría)", () => {
+    expect(labelsFor("operator")).toEqual(["Bandeja", "Inventario", "Alertas de stock"]);
   });
 
   it("shows nothing to residents (they get the 'Sin acceso' page anyway)", () => {

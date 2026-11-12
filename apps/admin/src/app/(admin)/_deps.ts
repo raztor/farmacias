@@ -9,6 +9,8 @@ export {
   InventoryFiltersForm,
   InventoryList,
   ProductStock,
+  StockAlerts,
+  StockAlertsLink,
   inventorySearch,
   parseInventoryFilters,
 } from "../../features/inventory";

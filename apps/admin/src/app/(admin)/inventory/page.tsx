@@ -5,6 +5,7 @@ import {
   InventoryFiltersForm,
   InventoryList,
   PageHeader,
+  StockAlertsLink,
   getAdminAccess,
   inventorySearch,
   parseInventoryFilters,
@@ -36,6 +37,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
         title="Inventario"
         description="Stock de cada producto. Entra a un producto para registrar recepciones o ajustes con su motivo."
       />
+      <StockAlertsLink />
       {/* Keyed by the URL so the form shows the applied filters after each navigation. */}
       <InventoryFiltersForm
         key={`${inventorySearch(parsed.filters)}|${parsed.searchInput}`}
