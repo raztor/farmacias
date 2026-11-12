@@ -70,6 +70,9 @@ export const PRODUCT_LANES = {
   deliveryValidation: 84,
   accessControl: 112,
   accessibility: 140,
+  // After the accessibility sub-lanes (offset 12 + repeat index). Few products are left, so this
+  // lane is indexed by `mobileWebSlot` (mobile-web projects only: at most 7 × 2 slots).
+  repeatOrder: 156,
 } as const;
 
 const PAGE_SIZE = 50;
