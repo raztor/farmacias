@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 
 import { reportUnexpectedApiError } from "../../lib/report-error";
+import { clearRepeatNotice } from "../orders";
 import { useTRPC, useTRPCClient } from "../../lib/trpc";
 
 type SetFulfillmentInput = RouterInputs["orders"]["setFulfillment"];
@@ -24,6 +25,8 @@ export function useSubmitCheckout() {
     },
     onSuccess: (order) => {
       queryClient.setQueryData(trpc.orders.draft.queryKey(), null);
+      // The cart was placed: a "Repetir pedido" notice about it no longer applies (HU-14).
+      clearRepeatNotice(queryClient);
       void queryClient.invalidateQueries(trpc.orders.mine.pathFilter());
       router.replace(`/pay/${order.id}`);
     },

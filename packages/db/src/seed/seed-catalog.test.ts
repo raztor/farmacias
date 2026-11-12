@@ -7,7 +7,7 @@ import { seedCatalog, type CatalogSeedClient } from "./seed-catalog";
 type UpsertArgs = {
   where: { sku: string };
   create: { sku: string; searchText: string; inventory: { create: { onHand: number } } };
-  update: { searchText: string; inventory: { upsert: { update: Record<string, never> } } };
+  update: { inventory: { upsert: { update: Record<string, never> } } };
 };
 
 /** In-memory stand-in for the two Prisma calls the seed makes. */
@@ -47,15 +47,16 @@ describe("seedCatalog", () => {
     expect(upsert?.create.searchText).toBe(
       "cardioten nandu losartan potasico comprimidos 50 mg x 30",
     );
-    expect(upsert?.update.searchText).toBe(upsert?.create.searchText);
   });
 
-  it("counts created and updated products and never resets existing stock", async () => {
+  it("counts created and existing products and never touches an existing one", async () => {
     const { client, upserts } = createFakeClient(["CAR-LOS-B1"]);
     const result = await seedCatalog(client, {
       products: [product("CAR-LOS-B1", "Uno"), product("CAR-LOS-G1", "Dos")],
     });
-    expect(result).toEqual({ created: 1, updated: 1, total: 2 });
+    expect(result).toEqual({ created: 1, existing: 1, total: 2 });
+    // Only a missing inventory row may be created: no product field, no stock reset (HU-11).
+    expect(upserts.map((args) => Object.keys(args.update))).toEqual([["inventory"], ["inventory"]]);
     expect(upserts.map((args) => args.update.inventory.upsert.update)).toEqual([{}, {}]);
   });
 
