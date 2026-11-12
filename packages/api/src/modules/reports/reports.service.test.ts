@@ -1,8 +1,7 @@
-import { AppError } from "@repo/shared";
+import { AppError, RANGE_ORDER_MESSAGE } from "@repo/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AlertsResult } from "../inventory";
-import { RANGE_ORDER_MESSAGE } from "./reports-range";
 import type { DispensedTotals, ReportsRepository, StatusRow } from "./reports.repository";
 import { TOP_PRODUCTS_LIMIT } from "./reports.schema";
 import {
@@ -124,7 +123,7 @@ describe("reports service: summary", () => {
     await expect(failure).rejects.toMatchObject({
       code: "BAD_REQUEST",
       message: RANGE_ORDER_MESSAGE,
-      details: { reason: "INVALID_RANGE", field: "from" },
+      details: { reason: "INVALID_RANGE", fields: ["from", "to"] },
     });
     expect(repo.dispensed).not.toHaveBeenCalled();
     expect(lowStock).not.toHaveBeenCalled();

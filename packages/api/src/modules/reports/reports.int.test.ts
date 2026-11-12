@@ -130,6 +130,27 @@ describe.skipIf(!INTEGRATION_ENABLED)("reports on PostgreSQL", () => {
     expect(ordersByStatus.items.map((item) => item.status)).not.toContain("draft");
   });
 
+  it("does not count abandoned carts (draft → cancelled) as cancelled orders (R-REP-02)", async () => {
+    const product = await createProduct(db());
+    const lines = [{ productId: product.id, quantity: 1 }];
+    const inRange = "2026-10-15T15:00:00.000Z";
+    const cancelEvent = (orderId: string, fromStatus: OrderStatus) =>
+      db().orderStatusEvent.create({
+        data: { orderId, fromStatus, toStatus: "cancelled", actorRole: "resident" },
+      });
+    // Placed (confirmed) and then cancelled before paying: a real order.
+    const placed = await placeOrder({ status: "cancelled", lines, placedAt: inRange });
+    await cancelEvent(placed.id, "pending_payment");
+    // Cart opened in the range and discarded without confirming: never placed.
+    const abandoned = await placeOrder({ status: "cancelled", lines, placedAt: inRange });
+    await cancelEvent(abandoned.id, "draft");
+
+    const { ordersByStatus } = await service().summary({ from: "2026-10-01", to: "2026-10-31" });
+
+    expect(ordersByStatus.items).toContainEqual({ status: "cancelled", count: 1 });
+    expect(ordersByStatus.total).toBe(1);
+  });
+
   it("uses Chile's midnight as the day boundary, not UTC's (R-REP-05)", async () => {
     const product = await createProduct(db());
     const lines = [{ productId: product.id, quantity: 4 }];
