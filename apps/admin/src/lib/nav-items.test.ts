@@ -12,12 +12,12 @@ const item = (label: string) => {
 };
 
 describe("navItemsFor", () => {
-  it("shows the queue, users and audit sections to admins", () => {
-    expect(labelsFor("admin")).toEqual(["Bandeja", "Usuarios", "Auditoría"]);
+  it("shows the queue, inventory, users and audit sections to admins", () => {
+    expect(labelsFor("admin")).toEqual(["Bandeja", "Inventario", "Usuarios", "Auditoría"]);
   });
 
-  it("shows only the queue to operators (no Usuarios, no Auditoría)", () => {
-    expect(labelsFor("operator")).toEqual(["Bandeja"]);
+  it("shows the queue and inventory to operators (no Usuarios, no Auditoría)", () => {
+    expect(labelsFor("operator")).toEqual(["Bandeja", "Inventario"]);
   });
 
   it("shows nothing to residents (they get the 'Sin acceso' page anyway)", () => {
@@ -36,5 +36,6 @@ describe("isNavItemActive", () => {
     expect(isNavItemActive(item("Auditoría"), "/audit")).toBe(true);
     expect(isNavItemActive(item("Usuarios"), "/users/u1")).toBe(true);
     expect(isNavItemActive(item("Usuarios"), "/usersx")).toBe(false);
+    expect(isNavItemActive(item("Inventario"), "/inventory/p-1")).toBe(true);
   });
 });

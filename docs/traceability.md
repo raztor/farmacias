@@ -42,6 +42,7 @@ Cadena **problema → objetivo (OE) → requisito (RF/RNF) → historia (HU) →
 | RF-10 | HU-08               | [order-status](./specs/order-status.md) R-OST-02..06; [operations](./specs/operations.md) R-OPS-06..11                               | `packages/api/src/modules/order-status/order-status.machine.test.ts`, `packages/api/src/modules/operations/operations.int.test.ts`, `apps/admin/src/features/orders/transition-selection.test.ts`, `apps/e2e/src/admin/operator-flow.spec.ts`                                                | [#17](https://github.com/raztor/farmacias/issues/17)                                                       | Verificado |
 | RF-11 | HU-09               | [tracking](./specs/tracking.md) R-TRK-01..06                                                                                         | `packages/api/src/modules/tracking/tracking.service.test.ts`, `packages/api/src/modules/tracking/tracking.int.test.ts`, `apps/e2e/src/mobile-web/resident-order.spec.ts`                                                                                                                     | [#18](https://github.com/raztor/farmacias/issues/18)                                                       | Verificado |
 | RF-12 | HU-06, HU-08, HU-09 | [audit](./specs/audit.md) R-AUD-01..03; [order-status](./specs/order-status.md) R-OST-07; [inventory](./specs/inventory.md) R-INV-06 | `packages/api/src/modules/audit/audit.int.test.ts`, `packages/api/src/modules/operations/operations.int.test.ts`, `packages/api/src/modules/inventory/inventory.int.test.ts`, `packages/db/src/auth-timestamps.int.test.ts` (DAT-I07), `packages/db/src/schema-parity.int.test.ts` (DAT-I05) | [#15](https://github.com/raztor/farmacias/issues/15), [#17](https://github.com/raztor/farmacias/issues/17) | Verificado |
+| RF-13 | HU-10               | [inventory](./specs/inventory.md) R-INV-12..16                                                                                       | `packages/api/src/modules/inventory/inventory-admin.service.test.ts`, `packages/api/src/modules/inventory/inventory-admin.int.test.ts`, `packages/api/src/modules/inventory/inventory.router.test.ts`, `apps/e2e/src/admin/inventory.spec.ts`                                                | [#19](https://github.com/raztor/farmacias/issues/19)                                                       | Verificado |
 
 ### Requisitos no funcionales
 
@@ -85,6 +86,8 @@ Cada criterio Must (Inception §8.1) tiene al menos una prueba automatizada (RNF
 | HU-08    | 2. Transición no permitida → rechazo y conserva el estado                 | OST-U02, OST-I01, OPS-I03, OPS-E02          | `packages/api/src/modules/order-status/order-status.machine.test.ts`                                                        | [#17](https://github.com/raztor/farmacias/issues/17) |
 | HU-09    | 1. Pedido propio → estado actual y secuencia cronológica                  | TRK-U01, TRK-I01, TRK-E01                   | `packages/api/src/modules/tracking/tracking.int.test.ts`                                                                    | [#18](https://github.com/raztor/farmacias/issues/18) |
 | HU-09    | 2. Pedido de otra cuenta → acceso denegado (`NOT_FOUND`, D-10)            | TRK-U02, TRK-I02, TRK-E02, TRK-U05          | `packages/api/src/modules/tracking/tracking.int.test.ts`                                                                    | [#18](https://github.com/raztor/farmacias/issues/18) |
+| HU-10    | 1. Recepción o ajuste con motivo → cambia el stock y se audita            | INV-U04, INV-I07, INV-I09, INV-I10, INV-E01 | `packages/api/src/modules/inventory/inventory-admin.int.test.ts`                                                            | [#19](https://github.com/raztor/farmacias/issues/19) |
+| HU-10    | 2. Sin motivo o con stock negativo → rechazo claro, sin cambios           | INV-U05, INV-U06, INV-U09, INV-I08, INV-E01 | `packages/api/src/modules/inventory/inventory-admin.int.test.ts`                                                            | [#19](https://github.com/raztor/farmacias/issues/19) |
 
 ## 4. Indicadores de éxito (§3.4, D-05)
 
@@ -118,11 +121,11 @@ Cada criterio Must (Inception §8.1) tiene al menos una prueba automatizada (RNF
 
 Historias incorporadas en el Sprint 3. Cada PR que las implementa agrega sus filas en §2 y §3 y cambia aquí el estado.
 
-| Requisito | Historia | Prioridad | Decisiones | Issue                                                | Estado    |
-| --------- | -------- | --------- | ---------- | ---------------------------------------------------- | --------- |
-| RF-13     | HU-10    | Should    | D-25       | [#19](https://github.com/raztor/farmacias/issues/19) | En curso  |
-| RF-14     | HU-11    | Should    | D-28       | [#20](https://github.com/raztor/farmacias/issues/20) | Pendiente |
-| RF-15     | HU-12    | Should    | D-26, D-27 | [#21](https://github.com/raztor/farmacias/issues/21) | En curso  |
-| RF-16     | HU-13    | Could     | D-29       | [#22](https://github.com/raztor/farmacias/issues/22) | Pendiente |
-| —         | HU-14    | Could     | D-30       | [#23](https://github.com/raztor/farmacias/issues/23) | Pendiente |
-| OE-07     | T-15     | Should    | —          | [#44](https://github.com/raztor/farmacias/issues/44) | Pendiente |
+| Requisito | Historia | Prioridad | Decisiones | Issue                                                | Estado     |
+| --------- | -------- | --------- | ---------- | ---------------------------------------------------- | ---------- |
+| RF-13     | HU-10    | Should    | D-25       | [#19](https://github.com/raztor/farmacias/issues/19) | Verificado |
+| RF-14     | HU-11    | Should    | D-28       | [#20](https://github.com/raztor/farmacias/issues/20) | Pendiente  |
+| RF-15     | HU-12    | Should    | D-26, D-27 | [#21](https://github.com/raztor/farmacias/issues/21) | En curso   |
+| RF-16     | HU-13    | Could     | D-29       | [#22](https://github.com/raztor/farmacias/issues/22) | Pendiente  |
+| —         | HU-14    | Could     | D-30       | [#23](https://github.com/raztor/farmacias/issues/23) | Pendiente  |
+| OE-07     | T-15     | Should    | —          | [#44](https://github.com/raztor/farmacias/issues/44) | Pendiente  |

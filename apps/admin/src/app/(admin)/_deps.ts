@@ -4,6 +4,13 @@ export { PageHeader } from "../../components/page-header";
 export { AuditFiltersForm, AuditList, parseAuditFilters } from "../../features/audit";
 export { ForbiddenScreen, SignOutButton } from "../../features/auth";
 export {
+  InventoryFiltersForm,
+  InventoryList,
+  ProductStock,
+  inventorySearch,
+  parseInventoryFilters,
+} from "../../features/inventory";
+export {
   OrderDetail,
   OrdersQueue,
   QueueFiltersForm,
