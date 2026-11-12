@@ -2,9 +2,11 @@ import { adminRouter } from "./modules/admin";
 import { auditRouter } from "./modules/audit";
 import { catalogRouter } from "./modules/catalog";
 import { healthRouter } from "./modules/health";
+import { inventoryRouter } from "./modules/inventory";
 import { operationsRouter } from "./modules/operations";
 import { ordersProcedures } from "./modules/orders";
 import { paymentsRouter } from "./modules/payments";
+import { reportsRouter } from "./modules/reports";
 import { trackingProcedures } from "./modules/tracking";
 import { userRouter } from "./modules/user";
 import { createCallerFactory, createRouter } from "./trpc";
@@ -19,6 +21,8 @@ export const appRouter = createRouter({
   payments: paymentsRouter,
   operations: operationsRouter,
   audit: auditRouter,
+  inventory: inventoryRouter,
+  reports: reportsRouter,
 });
 
 export type AppRouter = typeof appRouter;

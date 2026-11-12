@@ -92,7 +92,7 @@ Los paquetes internos se consumen **como código fuente TypeScript** (no se comp
 - Exporta: `createPrismaClient({ databaseUrl, log?, logger? })` (con `logger`, los logs de Prisma y los errores del pool de `pg` van al logger estructurado), `type PrismaClient`, `Prisma`, los tipos de modelos y `assertPostgresUrl` / `InvalidDatabaseUrlError`.
 - Solo para Node (server/worker): el cliente generado define `globalThis.__dirname` al importarse. admin y mobile solo usan sus **tipos** (a través de `@repo/api`).
 - Modelo del dominio ([spec de datos](./specs/data-model.md)): `Product`, `InventoryItem`, `StockMovement`, `Order`, `OrderLine`, `OrderStatusEvent`, `Payment`, `AuditLog`. Valores cerrados como texto con `CHECK` (sin enums), `pg_trgm` + índice GIN sobre `products.search_text`, únicos parciales (un borrador por persona, un pago aprobado por pedido) y código `P-000001` desde la secuencia `order_code_seq`.
-- Seed del catálogo: `seedCatalog(db, { products? })` (idempotente, upsert por `sku`, nunca reinicia stock; `search_text` con `buildProductSearchText` de `@repo/shared`) y `buildCatalogProducts()` (200 productos sintéticos con las categorías de `PRODUCT_CATEGORIES`). Pruebas con Vitest: `test` (unitarias, sin base) y `test:integration` (`*.int.test.ts`, requieren `TEST_DATABASE_URL`).
+- Seed del catálogo: `seedCatalog(db, { products? })` (idempotente: inserta por `sku` solo los productos que faltan y nunca modifica uno existente, ni sus datos editados por el admin en HU-11 ni su stock; `search_text` con `buildProductSearchText` de `@repo/shared`) y `buildCatalogProducts()` (200 productos sintéticos con las categorías de `PRODUCT_CATEGORIES`). Pruebas con Vitest: `test` (unitarias, sin base) y `test:integration` (`*.int.test.ts`, requieren `TEST_DATABASE_URL`).
 
 #### `@repo/auth` — Better Auth (servidor)
 
@@ -181,10 +181,11 @@ El contrato funcional del MVP (Inception v2.0: RF-01..RF-12, RNF-01..RNF-11, HU-
 | `orders`                              | Borrador único por persona, líneas, modalidad retiro/despacho simulado, confirmar, cancelar | [orders](./specs/orders.md)                 |
 | `order-status`                        | Máquina de estados pura: transiciones válidas por actor, etiquetas en español               | [order-status](./specs/order-status.md)     |
 | `payments`                            | Pago simulado idempotente detrás del puerto `PaymentGateway`                                | [payments](./specs/payments.md)             |
-| `inventory`                           | Descuento atómico al aprobarse el pago, restauración por cancelación, movimientos de stock  | [inventory](./specs/inventory.md)           |
+| `inventory`                           | Descuento por pago, restauración, recepciones y ajustes, alertas de stock bajo (backoffice) | [inventory](./specs/inventory.md)           |
 | `operations`                          | Bandeja operativa (filtros, FIFO) y transiciones físicas con concurrencia optimista         | [operations](./specs/operations.md)         |
 | `tracking`                            | “Mis pedidos” y línea de tiempo del pedido propio                                           | [tracking](./specs/tracking.md)             |
 | `audit`                               | Registro de cambios críticos en la misma transacción; consulta solo `admin`                 | [audit](./specs/audit.md)                   |
+| `reports`                             | Reportes agregados solo `admin`: unidades dispensadas, pedidos por estado, stock bajo       | [reports](./specs/reports.md)               |
 
 **Pago simulado (flujo crítico):** app → `payments.pay({ orderId, idempotencyKey, scenario })` → una transacción: registra el intento (clave única) → `PaymentGateway.charge` → si aprueba, descuento condicional por línea (`on_hand >= q`, en orden de `productId`) → _compare-and-set_ del pedido a `payment_validated` → evento de estado + movimientos + auditoría. Ver la [secuencia completa](./specs/payments.md#4-estados-y-transiciones).
 

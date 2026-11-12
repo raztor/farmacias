@@ -7,6 +7,7 @@ import { AppScreen } from "../../components/app-screen";
 import { ErrorState, LoadingState } from "../../components/query-state";
 import { formatClp, formatUnits } from "../../lib/format";
 import { RequireSignIn } from "../auth";
+import { RepeatOrderNotice } from "../orders";
 import { CartLine } from "./cart-line";
 import { useDraft } from "./use-draft";
 
@@ -63,6 +64,13 @@ function CartBody() {
   return <CartContent draft={draft.data} />;
 }
 
+/** HU-14: the "Repetir pedido" changes, once the current cart is known (it belongs to one cart). */
+function CartRepeatNotice() {
+  const draft = useDraft();
+  if (!draft.isSuccess) return null;
+  return <RepeatOrderNotice draftId={draft.data?.id ?? null} />;
+}
+
 /** «Mi pedido» (HU-03): the draft order with quantities, subtotals and total. */
 export function CartScreen() {
   return (
@@ -74,7 +82,10 @@ export function CartScreen() {
         </Text>
       </View>
       <RequireSignIn title="Inicia sesión para ver tu pedido">
-        <CartBody />
+        <View className="gap-4">
+          <CartRepeatNotice />
+          <CartBody />
+        </View>
       </RequireSignIn>
     </AppScreen>
   );

@@ -1,7 +1,7 @@
 import { TRPCClientError } from "@trpc/client";
 import { describe, expect, it } from "vitest";
 
-import { getTrpcErrorMessage, isConflictError } from "./trpc-errors";
+import { getTrpcErrorMessage, isConflictError, isRetryableError } from "./trpc-errors";
 
 function apiError(message: string, code: string, httpStatus: number) {
   return TRPCClientError.from({ error: { message, code: -32_600, data: { code, httpStatus } } });
@@ -48,5 +48,18 @@ describe("isConflictError", () => {
     expect(isConflictError(apiError("Este pedido cambió", "CONFLICT", 409))).toBe(true);
     expect(isConflictError(apiError("No encontrado", "NOT_FOUND", 404))).toBe(false);
     expect(isConflictError(new Error("CONFLICT"))).toBe(false);
+  });
+});
+
+describe("isRetryableError", () => {
+  it("does not offer a retry for deterministic client errors", () => {
+    expect(isRetryableError(apiError("Rango inválido", "BAD_REQUEST", 400))).toBe(false);
+    expect(isRetryableError(apiError("FORBIDDEN", "FORBIDDEN", 403))).toBe(false);
+  });
+
+  it("offers a retry for server, network and unknown errors", () => {
+    expect(isRetryableError(apiError("boom", "INTERNAL_SERVER_ERROR", 500))).toBe(true);
+    expect(isRetryableError(new TRPCClientError("Failed to fetch"))).toBe(true);
+    expect(isRetryableError(new Error("x"))).toBe(true);
   });
 });

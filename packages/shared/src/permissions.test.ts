@@ -37,6 +37,10 @@ describe("permission matrix", () => {
       "users:list": ["admin"],
       "users:set-role": ["admin"],
       "audit:read": ["admin"],
+      "inventory:read": ["operator", "admin"],
+      "inventory:adjust": ["operator", "admin"],
+      "catalog:write": ["admin"],
+      "reports:read": ["admin"],
     });
   });
 
@@ -46,6 +50,9 @@ describe("permission matrix", () => {
       expect(can(role, "operations", "transition")).toBe(isOperational(role));
       expect(can(role, "users", "set-role")).toBe(isAdmin(role));
       expect(can(role, "audit", "read")).toBe(isAdmin(role));
+      expect(can(role, "inventory", "adjust")).toBe(isOperational(role));
+      expect(can(role, "catalog", "write")).toBe(isAdmin(role));
+      expect(can(role, "reports", "read")).toBe(isAdmin(role));
     }
   });
 

@@ -1,5 +1,22 @@
 export { createInventoryStore, type InventoryClient } from "./inventory.repository";
 export {
+  createInventoryAdminServiceFromDeps,
+  type InventoryAdminService,
+} from "./inventory-admin.service";
+export { inventoryRouter } from "./inventory.router";
+export {
+  type AlertsResult,
+  type InventoryItemView,
+  type ListInventoryInput,
+  type ListInventoryResult,
+  type MovementsInput,
+  type MovementsResult,
+  type SetThresholdInput,
+  type StockAdjustmentResult,
+  type StockLevel,
+  type StockMovementView,
+} from "./inventory.schema";
+export {
   availabilityLevel,
   discountForOrder,
   normalizeStockLines,

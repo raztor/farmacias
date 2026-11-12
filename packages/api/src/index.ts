@@ -20,6 +20,12 @@ export {
   type SetRoleInput,
 } from "./modules/admin";
 export {
+  type AdminListProductsInput,
+  type AdminProduct,
+  type AdminProductList,
+  type AdminProductStatus,
+  type CreateProductInput,
+  type UpdateProductInput,
   type CatalogSearchInput,
   type CatalogSearchResult,
   type ProductAvailability,
@@ -27,6 +33,24 @@ export {
   type ProductSummary,
 } from "./modules/catalog";
 export { type HealthStatus } from "./modules/health";
+export {
+  type AlertsResult,
+  type InventoryItemView,
+  type ListInventoryInput,
+  type ListInventoryResult,
+  type MovementsResult,
+  type StockAdjustmentResult,
+  type StockLevel,
+  type StockMovementView,
+} from "./modules/inventory";
+export {
+  type DispensedProduct,
+  type DispensedReport,
+  type OrderStatusCount,
+  type OrdersByStatusReport,
+  type ReportsSummary,
+  type ReportsSummaryInput,
+} from "./modules/reports";
 // Ordering services for trusted server code (seed scripts); clients use the tRPC router.
 export {
   createOrderTransitionServiceFromDeps,
@@ -42,6 +66,9 @@ export {
   type OrderTransitionService,
   type OrdersService,
   type RemoveItemInput,
+  type RepeatChange,
+  type RepeatChangeReason,
+  type RepeatResult,
   type SetFulfillmentInput,
   type SetQuantityInput,
   type TransitionActor,

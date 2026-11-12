@@ -9,10 +9,10 @@ import { writeLaneSnapshot } from "../support/product-lanes.ts";
  */
 test("toma la foto de los carriles de productos de esta ejecución", async ({ publicApi }) => {
   const ids = await laneSnapshot(publicApi);
-  // The accessibility sub-lanes reach offset 12 plus the repeat index: with fewer products
-  // the E2E database has to be re-seeded (docs/validation/e2e.md).
-  expect(ids.length, "productos con stock para los carriles").toBeGreaterThan(
-    PRODUCT_LANES.accessibility + 16,
+  // The last lane (repeat order) reaches 14 slots (`mobileWebSlot`): with fewer products the
+  // E2E database has to be re-seeded (docs/validation/e2e.md).
+  expect(ids.length, "productos con stock para los carriles").toBeGreaterThanOrEqual(
+    PRODUCT_LANES.repeatOrder + 14,
   );
   await writeLaneSnapshot(ids);
 });
