@@ -185,6 +185,7 @@ El contrato funcional del MVP (Inception v2.0: RF-01..RF-12, RNF-01..RNF-11, HU-
 | `operations`                          | Bandeja operativa (filtros, FIFO) y transiciones físicas con concurrencia optimista         | [operations](./specs/operations.md)         |
 | `tracking`                            | “Mis pedidos” y línea de tiempo del pedido propio                                           | [tracking](./specs/tracking.md)             |
 | `audit`                               | Registro de cambios críticos en la misma transacción; consulta solo `admin`                 | [audit](./specs/audit.md)                   |
+| `reports`                             | Reportes agregados solo `admin`: unidades dispensadas, pedidos por estado, stock bajo       | [reports](./specs/reports.md)               |
 
 **Pago simulado (flujo crítico):** app → `payments.pay({ orderId, idempotencyKey, scenario })` → una transacción: registra el intento (clave única) → `PaymentGateway.charge` → si aprueba, descuento condicional por línea (`on_hand >= q`, en orden de `productId`) → _compare-and-set_ del pedido a `payment_validated` → evento de estado + movimientos + auditoría. Ver la [secuencia completa](./specs/payments.md#4-estados-y-transiciones).
 

@@ -19,6 +19,7 @@ Estas especificaciones (specs) son el **contrato funcional** de cada módulo del
 | [Operación](./operations.md)            | `packages/api/src/modules/operations`                     | HU-07, HU-08        | RF-09, RF-10, RF-12, RNF-05, RNF-07                         | #16, #17      |
 | [Seguimiento](./tracking.md)            | `packages/api/src/modules/tracking`                       | HU-09               | RF-11, RNF-05, RNF-06                                       | #18           |
 | [Auditoría](./audit.md)                 | `packages/api/src/modules/audit`                          | HU-06, HU-08        | RF-12, RNF-07                                               | #15, #17      |
+| [Reportes](./reports.md)                | `packages/api/src/modules/reports`                        | HU-13               | RF-16, RNF-05, RNF-06                                       | #22           |
 
 Diagramas UML: Mermaid dentro de cada spec (se ven en GitHub) y fuentes PlantUML en [`docs/uml`](../uml/README.md).
 

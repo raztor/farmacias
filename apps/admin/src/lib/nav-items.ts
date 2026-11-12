@@ -30,6 +30,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/catalog", label: "Catálogo", isVisibleFor: (role) => can(role, "catalog", "write") },
   { href: "/users", label: "Usuarios", isVisibleFor: (role) => can(role, "users", "list") },
   { href: "/audit", label: "Auditoría", isVisibleFor: (role) => can(role, "audit", "read") },
+  { href: "/reports", label: "Reportes", isVisibleFor: (role) => can(role, "reports", "read") },
 ];
 
 /** Items the given role may open (operators never see Catálogo, Usuarios nor Auditoría). Pure. */
