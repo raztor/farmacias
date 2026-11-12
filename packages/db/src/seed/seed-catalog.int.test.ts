@@ -23,7 +23,7 @@ describe.skipIf(!TEST_DATABASE_URL)("seedCatalog on PostgreSQL", () => {
   it("creates every product with its inventory row and normalized search text", async () => {
     const expected = buildCatalogProducts();
     const result = await seedCatalog(db);
-    expect(result).toEqual({ created: expected.length, updated: 0, total: expected.length });
+    expect(result).toEqual({ created: expected.length, existing: 0, total: expected.length });
     expect(await db.product.count()).toBe(expected.length);
     expect(await db.inventoryItem.count()).toBe(expected.length);
 
@@ -38,7 +38,7 @@ describe.skipIf(!TEST_DATABASE_URL)("seedCatalog on PostgreSQL", () => {
     expect(stored.inventory?.onHand).toBe(sample.onHand);
   });
 
-  it("is idempotent and never resets stock", async () => {
+  it("is idempotent, never resets stock and keeps admin edits (HU-11)", async () => {
     const sample = buildCatalogProducts()[1];
     if (!sample) throw new Error("empty catalog");
     const product = await db.product.findUniqueOrThrow({ where: { sku: sample.sku } });
@@ -46,10 +46,20 @@ describe.skipIf(!TEST_DATABASE_URL)("seedCatalog on PostgreSQL", () => {
       where: { productId: product.id },
       data: { onHand: sample.onHand + 7 },
     });
+    const edited = {
+      commercialName: "Editado Por Admin",
+      priceClp: sample.priceClp + 1000,
+      active: false,
+      searchText: "editado por admin",
+    };
+    await db.product.update({ where: { id: product.id }, data: edited });
 
     const second = await seedCatalog(db);
     expect(second.created).toBe(0);
-    expect(second.updated).toBe(second.total);
+    expect(second.existing).toBe(second.total);
+    await expect(
+      db.product.findUniqueOrThrow({ where: { id: product.id } }),
+    ).resolves.toMatchObject(edited);
     expect(await db.product.count()).toBe(second.total);
     expect(await db.inventoryItem.count()).toBe(second.total);
     const inventory = await db.inventoryItem.findUniqueOrThrow({

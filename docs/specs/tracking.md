@@ -20,8 +20,9 @@ Que la persona consulte el estado actual y el historial cronológico de **su** p
 2. **R-TRK-02.** Cada hito de la línea de tiempo muestra estado, fecha y hora (hora de Chile, D-23), el rol del actor en lenguaje simple («Tú», «Sistema», «Farmacia») y la nota si existe. **Nunca** muestra nombre, correo ni identificador del funcionario. _(RF-11, RF-12, RNF-06, D-19)_
 3. **R-TRK-03.** Un pedido de otra cuenta, o inexistente, responde `NOT_FOUND` con el mismo mensaje («No encontramos ese pedido.»); así el sistema deniega el acceso sin revelar si el pedido existe. _(HU-09 criterio 2, RNF-05, D-10)_
 4. **R-TRK-04.** «Mis pedidos» lista solo los pedidos propios **no borradores**, del más reciente al más antiguo, con paginación por cursor. El borrador se ve en «Mi pedido» ([Pedidos](./orders.md)). _(RF-11, D-20)_
-5. **R-TRK-05.** El listado es mínimo (código, estado, modalidad, total, fecha) y sirve para llegar al detalle; el historial ampliado de pedidos (Should §4.2) y repetir un pedido (HU-14, Could) no se construyen. _(D-20)_
+5. **R-TRK-05.** El listado es mínimo (código, estado, modalidad, total, fecha) y sirve para llegar al detalle; el historial ampliado de pedidos (Should §4.2) no se construye. _(D-20)_
 6. **R-TRK-06.** El 100 % de los pedidos de prueba muestra su historial completo: toda transición aplicada tiene su evento (R-OST-07). _(indicador “Visibilidad del estado”, D-05)_
+7. **R-TRK-07.** El detalle de un pedido propio que no es borrador ofrece «Repetir pedido» (HU-14): llama a `orders.repeat` ([Pedidos](./orders.md), R-ORD-16), actualiza el carrito con el borrador devuelto y abre «Mi pedido». Allí un aviso (región en vivo que además recibe el foco al abrir el carrito) lista cada cambio con nombre y presentación, p. ej. «Paracetamol (Comprimidos 500 mg x 16): se agregaron 2 de 5 por disponibilidad», «… se agregaron 19 de 30 (máximo 99 por producto)» o «Ibuprofeno (Comprimidos 400 mg x 20): agotado, no se agregó». El aviso pertenece a ese carrito: se cierra con «Entendido», se borra al confirmarlo y no se muestra sobre otro borrador. _(HU-14, D-30)_
 
 ## 4. Estados y transiciones
 
@@ -29,12 +30,13 @@ Solo lectura. Usa `statusLabel` de [Estados del pedido](./order-status.md).
 
 ## 5. API
 
-Ambos son `residentProcedure` (sin sesión `UNAUTHORIZED`; otro rol `FORBIDDEN`). Se publican en el espacio `orders.*` del router raíz para que el cliente tenga una sola superficie de pedidos; la implementación vive en el módulo `tracking`.
+Todos son `residentProcedure` (sin sesión `UNAUTHORIZED`; otro rol `FORBIDDEN`). Se publican en el espacio `orders.*` del router raíz para que el cliente tenga una sola superficie de pedidos; la implementación de `mine`/`detail` vive en el módulo `tracking` y la de `repeat` (HU-14), que escribe el borrador, en el módulo `orders`.
 
-| Procedimiento   | Tipo  | Entrada                                   | Salida                                 | Errores                    |
-| --------------- | ----- | ----------------------------------------- | -------------------------------------- | -------------------------- |
-| `orders.mine`   | query | `{ cursor?: string, limit?: 1..50 = 20 }` | `{ items: MyOrderItem[], nextCursor }` | `BAD_REQUEST`              |
-| `orders.detail` | query | `{ id: string }`                          | `MyOrderDetail`                        | `BAD_REQUEST`, `NOT_FOUND` |
+| Procedimiento   | Tipo     | Entrada                                   | Salida                                      | Errores                                |
+| --------------- | -------- | ----------------------------------------- | ------------------------------------------- | -------------------------------------- |
+| `orders.mine`   | query    | `{ cursor?: string, limit?: 1..50 = 20 }` | `{ items: MyOrderItem[], nextCursor }`      | `BAD_REQUEST`                          |
+| `orders.detail` | query    | `{ id: string }`                          | `MyOrderDetail`                             | `BAD_REQUEST`, `NOT_FOUND`             |
+| `orders.repeat` | mutation | `{ orderId: string }`                     | `RepeatResult` (ver [Pedidos](./orders.md)) | `BAD_REQUEST`, `NOT_FOUND`, `CONFLICT` |
 
 ```ts
 type MyOrderItem = {
@@ -93,6 +95,8 @@ Lee `orders` (filtrado siempre por `resident_id = sesión.user.id`), `order_line
 | TRK-I02 | int   | Residente B consulta pedido de A → `NOT_FOUND`                                                                                                                  | HU-09 #2           | `packages/api/src/modules/tracking/tracking.int.test.ts`     |
 | TRK-E01 | e2e   | Tras pagar, el detalle muestra «Pago validado» y la línea de tiempo                                                                                             | HU-09 #1           | `apps/e2e/src/mobile-web/resident-order.spec.ts`             |
 | TRK-E02 | e2e   | Residente no puede abrir el pedido de otra cuenta                                                                                                               | HU-09 #2           | `apps/e2e/src/mobile-web/access-denied.spec.ts`              |
+| TRK-U06 | unit  | Cliente: «Repetir pedido» solo en pedidos que no son borrador                                                                                                   | R-TRK-07           | `apps/mobile/src/features/orders/order-status-view.test.ts`  |
+| TRK-E03 | e2e   | «Repetir pedido» desde el detalle (ver ORD-E03)                                                                                                                 | R-TRK-07           | `apps/e2e/src/mobile-web/repeat-order.spec.ts`               |
 
 ## 8. Trazabilidad
 
@@ -102,3 +106,4 @@ Lee `orders` (filtrado siempre por `resident_id = sesión.user.id`), `order_line
 | RF-12     | HU-09    | R-TRK-02               | TRK-U01, TRK-U04                   |
 | RNF-05    | HU-09    | R-TRK-03               | TRK-U02, TRK-I02, TRK-E02          |
 | RNF-06    | HU-09    | R-TRK-02               | TRK-U01                            |
+| RF-04     | HU-14    | R-TRK-07               | TRK-U06, TRK-E03                   |

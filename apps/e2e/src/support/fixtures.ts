@@ -62,6 +62,18 @@ export function projectSlot(testInfo: TestInfo): number {
   return index + names.length * testInfo.repeatEachIndex;
 }
 
+/**
+ * Like `projectSlot`, counting only the `mobile-web-*` projects: a compact slot for lanes used
+ * only by resident specs (at most 7 projects × 2 repetitions = 14 slots).
+ */
+export function mobileWebSlot(testInfo: TestInfo): number {
+  const names = testInfo.config.projects
+    .map((project) => project.name)
+    .filter((name) => name.startsWith("mobile-web-"));
+  const index = Math.max(names.indexOf(testInfo.project.name), 0);
+  return index + names.length * testInfo.repeatEachIndex;
+}
+
 /** Signs in on the resident app (Expo web) sign-in screen. */
 export async function signInOnMobileWeb(page: Page, credentials: Credentials): Promise<void> {
   await page.getByTestId("sign-in-email").fill(credentials.email);

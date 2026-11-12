@@ -6,6 +6,8 @@ import {
 } from "@repo/shared";
 import { z } from "zod";
 
+import type { RepeatChange } from "./repeat-plan";
+
 /** Limits of the synthetic delivery data (docs/specs/orders.md R-ORD-09, D-04). */
 export const DELIVERY_LIMITS = {
   sector: { min: 2, max: 60 },
@@ -113,6 +115,10 @@ export const cancelInput = z.object({
 });
 export type CancelInput = z.output<typeof cancelInput>;
 
+/** Input of `orders.repeat` (HU-14): one of the caller's previous orders. */
+export const repeatInput = z.object({ orderId: idSchema("Selecciona un pedido") });
+export type RepeatInput = z.output<typeof repeatInput>;
+
 export type DeliveryDetails = {
   sector: string;
   addressReference: string;
@@ -156,3 +162,9 @@ export type OrderSummary = {
   version: number;
   updatedAt: Date;
 };
+
+/**
+ * Result of `orders.repeat` (D-30): the cart after adding what was possible (`null` only when there
+ * was no draft and nothing could be added) and every product not added in full.
+ */
+export type RepeatResult = { draft: OrderDraft | null; changes: RepeatChange[] };
