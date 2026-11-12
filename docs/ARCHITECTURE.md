@@ -181,7 +181,7 @@ El contrato funcional del MVP (Inception v2.0: RF-01..RF-12, RNF-01..RNF-11, HU-
 | `orders`                              | Borrador único por persona, líneas, modalidad retiro/despacho simulado, confirmar, cancelar | [orders](./specs/orders.md)                 |
 | `order-status`                        | Máquina de estados pura: transiciones válidas por actor, etiquetas en español               | [order-status](./specs/order-status.md)     |
 | `payments`                            | Pago simulado idempotente detrás del puerto `PaymentGateway`                                | [payments](./specs/payments.md)             |
-| `inventory`                           | Descuento atómico al aprobarse el pago, restauración por cancelación, movimientos de stock  | [inventory](./specs/inventory.md)           |
+| `inventory`                           | Descuento por pago, restauración, recepciones y ajustes, alertas de stock bajo (backoffice) | [inventory](./specs/inventory.md)           |
 | `operations`                          | Bandeja operativa (filtros, FIFO) y transiciones físicas con concurrencia optimista         | [operations](./specs/operations.md)         |
 | `tracking`                            | “Mis pedidos” y línea de tiempo del pedido propio                                           | [tracking](./specs/tracking.md)             |
 | `audit`                               | Registro de cambios críticos en la misma transacción; consulta solo `admin`                 | [audit](./specs/audit.md)                   |
