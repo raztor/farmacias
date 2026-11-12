@@ -28,6 +28,8 @@ import type {
 
 export const ADMIN_PRODUCT_NOT_FOUND_MESSAGE = "El producto no existe.";
 export const PRODUCT_SKU_TAKEN_MESSAGE = "Ya existe un producto con ese SKU.";
+export const PRODUCT_STALE_MESSAGE =
+  "El producto cambió mientras lo editabas. Recarga para ver los cambios.";
 
 /** Inventory row of a new product (R-CAT-14, D-28): no stock and the default threshold. */
 export const NEW_PRODUCT_INVENTORY = {
@@ -116,14 +118,18 @@ const insertProduct = async (
 
 /**
  * Locks the product, writes the new fields and the `product.update` audit row (before / after).
+ * Someone else saved since the admin loaded it (`updatedAt` differs): CONFLICT, nothing written.
  * A save without changes writes nothing.
  */
 const updateProduct = async (
   { products, audit }: CatalogAdminUnitOfWork,
-  { actorId, actorRole, id, ...fields }: UpdateProductCommand,
+  { actorId, actorRole, id, expectedUpdatedAt, ...fields }: UpdateProductCommand,
 ): Promise<AdminProduct> => {
   const current = await products.lockById(id);
   if (!current) throw notFound();
+  if (current.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    throw new AppError("CONFLICT", PRODUCT_STALE_MESSAGE);
+  }
   if (sameFields(current, fields)) return current;
   const updated = await products.update(id, toWrite(fields));
   await audit.record([

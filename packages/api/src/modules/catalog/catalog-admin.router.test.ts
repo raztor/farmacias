@@ -45,7 +45,10 @@ const ADMIN_CALLS: readonly [string, (caller: Caller) => Promise<unknown>][] = [
   ["adminList", (caller) => caller.catalog.adminList({})],
   ["adminById", (caller) => caller.catalog.adminById({ id: "prod-1" })],
   ["create", (caller) => caller.catalog.create(FIELDS)],
-  ["update", (caller) => caller.catalog.update({ id: "prod-1", ...FIELDS })],
+  [
+    "update",
+    (caller) => caller.catalog.update({ id: "prod-1", expectedUpdatedAt: new Date(), ...FIELDS }),
+  ],
 ];
 
 describe("catalog admin procedures: access (HU-11 #2, D-28, D-31)", () => {
@@ -114,7 +117,12 @@ describe("catalog admin procedures as admin", () => {
       code: "BAD_REQUEST",
     });
     await expect(
-      caller.catalog.update({ id: "prod-1", ...FIELDS, category: "cosmeticos" as "otros" }),
+      caller.catalog.update({
+        id: "prod-1",
+        expectedUpdatedAt: new Date(),
+        ...FIELDS,
+        category: "cosmeticos" as "otros",
+      }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect($transaction).not.toHaveBeenCalled();
   });

@@ -14,6 +14,7 @@ import {
   ADMIN_PRODUCT_NOT_FOUND_MESSAGE,
   NEW_PRODUCT_INVENTORY,
   PRODUCT_SKU_TAKEN_MESSAGE,
+  PRODUCT_STALE_MESSAGE,
   createCatalogAdminService,
   toProductSnapshot,
 } from "./catalog-admin.service";
@@ -208,7 +209,12 @@ describe("catalogAdminService.update (R-CAT-13, R-CAT-16, R-CAT-17)", () => {
     const service = createCatalogAdminService({ repo: fake.repo });
     const changes = { ...FIELDS, commercialName: "Tensivar Forte", priceClp: 7490 };
 
-    const result = await service.update({ id: "prod-1", ...changes, ...ACTOR });
+    const result = await service.update({
+      id: "prod-1",
+      expectedUpdatedAt: UPDATED_AT,
+      ...changes,
+      ...ACTOR,
+    });
 
     expect(fake.updated).toEqual([
       { id: "prod-1", data: { ...changes, searchText: buildProductSearchText(changes) } },
@@ -220,7 +226,14 @@ describe("catalogAdminService.update (R-CAT-13, R-CAT-16, R-CAT-17)", () => {
     const fake = createFakeRepo({ stored: product() });
     const service = createCatalogAdminService({ repo: fake.repo });
 
-    await service.update({ id: "prod-1", ...FIELDS, priceClp: 5990, active: false, ...ACTOR });
+    await service.update({
+      id: "prod-1",
+      expectedUpdatedAt: UPDATED_AT,
+      ...FIELDS,
+      priceClp: 5990,
+      active: false,
+      ...ACTOR,
+    });
 
     expect(fake.audits).toEqual([
       {
@@ -239,7 +252,27 @@ describe("catalogAdminService.update (R-CAT-13, R-CAT-16, R-CAT-17)", () => {
     const fake = createFakeRepo({ stored });
     const service = createCatalogAdminService({ repo: fake.repo });
 
-    await expect(service.update({ id: "prod-1", ...FIELDS, ...ACTOR })).resolves.toEqual(stored);
+    await expect(
+      service.update({ id: "prod-1", expectedUpdatedAt: UPDATED_AT, ...FIELDS, ...ACTOR }),
+    ).resolves.toEqual(stored);
+    expect(fake.updated).toEqual([]);
+    expect(fake.audits).toEqual([]);
+  });
+
+  it("answers CONFLICT and writes nothing when the product changed since it was loaded (R-CAT-18)", async () => {
+    const fake = createFakeRepo({ stored: product() });
+    const service = createCatalogAdminService({ repo: fake.repo });
+    const loadedBefore = new Date(UPDATED_AT.getTime() - 1);
+
+    await expect(
+      service.update({
+        id: "prod-1",
+        expectedUpdatedAt: loadedBefore,
+        ...FIELDS,
+        priceClp: 100,
+        ...ACTOR,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: PRODUCT_STALE_MESSAGE });
     expect(fake.updated).toEqual([]);
     expect(fake.audits).toEqual([]);
   });
@@ -248,7 +281,9 @@ describe("catalogAdminService.update (R-CAT-13, R-CAT-16, R-CAT-17)", () => {
     const fake = createFakeRepo();
     const service = createCatalogAdminService({ repo: fake.repo });
 
-    await expect(service.update({ id: "ghost", ...FIELDS, ...ACTOR })).rejects.toMatchObject({
+    await expect(
+      service.update({ id: "ghost", expectedUpdatedAt: UPDATED_AT, ...FIELDS, ...ACTOR }),
+    ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     expect(fake.audits).toEqual([]);
@@ -259,7 +294,13 @@ describe("catalogAdminService.update (R-CAT-13, R-CAT-16, R-CAT-17)", () => {
     const service = createCatalogAdminService({ repo: fake.repo });
 
     await expect(
-      service.update({ id: "prod-1", ...FIELDS, sku: "OTRO-SKU", ...ACTOR }),
+      service.update({
+        id: "prod-1",
+        expectedUpdatedAt: UPDATED_AT,
+        ...FIELDS,
+        sku: "OTRO-SKU",
+        ...ACTOR,
+      }),
     ).rejects.toMatchObject({ code: "CONFLICT", message: PRODUCT_SKU_TAKEN_MESSAGE });
   });
 
@@ -271,7 +312,13 @@ describe("catalogAdminService.update (R-CAT-13, R-CAT-16, R-CAT-17)", () => {
     });
     const info = vi.spyOn(logger, "info");
 
-    await service.update({ id: "prod-1", ...FIELDS, priceClp: 100, ...ACTOR });
+    await service.update({
+      id: "prod-1",
+      expectedUpdatedAt: UPDATED_AT,
+      ...FIELDS,
+      priceClp: 100,
+      ...ACTOR,
+    });
 
     expect(info).toHaveBeenCalledOnce();
     expect(entries[0]?.obj).toEqual({ actorId: "admin-1", productId: "prod-1" });

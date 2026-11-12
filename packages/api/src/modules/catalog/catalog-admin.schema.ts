@@ -28,8 +28,14 @@ export type AdminListProductsQuery = z.output<typeof adminListProductsInput>;
 export const createProductInput = productFieldsSchema;
 export type CreateProductInput = z.output<typeof createProductInput>;
 
-/** Input of `catalog.update` (R-CAT-13): the product id plus the full set of editable fields. */
-export const updateProductInput = productFieldsSchema.extend({ id: productIdSchema });
+/**
+ * Input of `catalog.update` (R-CAT-13): the product id, the full set of editable fields and the
+ * `updatedAt` the admin loaded (optimistic concurrency, R-CAT-18).
+ */
+export const updateProductInput = productFieldsSchema.extend({
+  id: productIdSchema,
+  expectedUpdatedAt: z.date({ error: "Falta la versión del producto que editaste" }),
+});
 export type UpdateProductInput = z.output<typeof updateProductInput>;
 
 /** Product as the back office sees it (admin only): includes SKU, status and stock. */

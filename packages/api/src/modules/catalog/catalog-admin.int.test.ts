@@ -105,7 +105,12 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog maintenance (PostgreSQL)", () => 
       active: true,
     } as const;
 
-    const updated = await caller.catalog.update({ id: product.id, ...fields, priceClp: 3490 });
+    const updated = await caller.catalog.update({
+      id: product.id,
+      expectedUpdatedAt: product.updatedAt,
+      ...fields,
+      priceClp: 3490,
+    });
 
     expect(updated.priceClp).toBe(3490);
     const visitor = await callerFor(null);
@@ -122,8 +127,46 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog maintenance (PostgreSQL)", () => 
     });
 
     // Saving the same values again writes no audit row.
-    await caller.catalog.update({ id: product.id, ...fields, priceClp: 3490 });
+    await caller.catalog.update({
+      id: product.id,
+      expectedUpdatedAt: updated.updatedAt,
+      ...fields,
+      priceClp: 3490,
+    });
     await expect(auditRows(product.id)).resolves.toHaveLength(1);
+  });
+
+  it("rejects a save based on a stale version with CONFLICT (CAT-I10, R-CAT-18)", async () => {
+    const { caller } = await adminCaller();
+    const created = await caller.catalog.create(NEW_PRODUCT);
+    // The version both admins loaded, a minute ago (so the first save surely gets a newer one).
+    const loaded = new Date(Date.now() - 60_000);
+    await db().product.update({ where: { id: created.id }, data: { updatedAt: loaded } });
+    const first = await caller.catalog.update({
+      ...NEW_PRODUCT,
+      id: created.id,
+      expectedUpdatedAt: loaded,
+      priceClp: 1590,
+    });
+
+    // A second admin still holding the version loaded before the first save.
+    await expect(
+      caller.catalog.update({
+        ...NEW_PRODUCT,
+        id: created.id,
+        expectedUpdatedAt: loaded,
+        priceClp: 990,
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "El producto cambió mientras lo editabas. Recarga para ver los cambios.",
+    });
+
+    await expect(caller.catalog.adminById({ id: created.id })).resolves.toMatchObject({
+      priceClp: 1590,
+      updatedAt: first.updatedAt,
+    });
+    await expect(auditRows(created.id)).resolves.toHaveLength(2);
   });
 
   it("rejects a duplicate SKU with CONFLICT and writes nothing (CAT-I07)", async () => {
@@ -137,6 +180,7 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog maintenance (PostgreSQL)", () => 
     await expect(
       caller.catalog.update({
         id: other.id,
+        expectedUpdatedAt: other.updatedAt,
         ...NEW_PRODUCT,
         sku: existing.sku,
       }),
@@ -160,6 +204,7 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog maintenance (PostgreSQL)", () => 
     await caller.catalog.update({
       ...NEW_PRODUCT,
       id: created.id,
+      expectedUpdatedAt: created.updatedAt,
       commercialName: "Retirable",
       active: false,
     });
@@ -211,6 +256,7 @@ describe.skipIf(!INTEGRATION_ENABLED)("catalog maintenance (PostgreSQL)", () => 
 
     await caller.catalog.update({
       id: product.id,
+      expectedUpdatedAt: product.updatedAt,
       sku: product.sku,
       commercialName: product.commercialName,
       activeIngredient: product.activeIngredient,
