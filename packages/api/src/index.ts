@@ -37,6 +37,14 @@ export {
   type StockLevel,
   type StockMovementView,
 } from "./modules/inventory";
+export {
+  type DispensedProduct,
+  type DispensedReport,
+  type OrderStatusCount,
+  type OrdersByStatusReport,
+  type ReportsSummary,
+  type ReportsSummaryInput,
+} from "./modules/reports";
 // Ordering services for trusted server code (seed scripts); clients use the tRPC router.
 export {
   createOrderTransitionServiceFromDeps,
