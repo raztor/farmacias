@@ -15,7 +15,7 @@ Estas especificaciones (specs) son el **contrato funcional** de cada módulo del
 | [Pedidos](./orders.md)                  | `packages/api/src/modules/orders`                         | HU-03, HU-04        | RF-04, RF-05, RNF-05, RNF-06, RNF-09                        | #12, #13      |
 | [Estados del pedido](./order-status.md) | `packages/api/src/modules/order-status`                   | HU-05, HU-08, HU-09 | RF-07, RF-10, RF-12, RNF-07                                 | #14, #17      |
 | [Pagos simulados](./payments.md)        | `packages/api/src/modules/payments`                       | HU-05, HU-06        | RF-06, RF-07, RF-08, RNF-08, RNF-11                         | #14, #15      |
-| [Inventario](./inventory.md)            | `packages/api/src/modules/inventory`                      | HU-06               | RF-07, RF-08, RF-12, RNF-07, RNF-08, RNF-11                 | #15           |
+| [Inventario](./inventory.md)            | `packages/api/src/modules/inventory`                      | HU-06, HU-10, HU-12 | RF-07, RF-08, RF-12, RF-13, RF-15, RNF-07, RNF-08, RNF-11   | #15, #19, #21 |
 | [Operación](./operations.md)            | `packages/api/src/modules/operations`                     | HU-07, HU-08        | RF-09, RF-10, RF-12, RNF-05, RNF-07                         | #16, #17      |
 | [Seguimiento](./tracking.md)            | `packages/api/src/modules/tracking`                       | HU-09               | RF-11, RNF-05, RNF-06                                       | #18           |
 | [Auditoría](./audit.md)                 | `packages/api/src/modules/audit`                          | HU-06, HU-08        | RF-12, RNF-07                                               | #15, #17      |
