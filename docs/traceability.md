@@ -120,9 +120,9 @@ Historias incorporadas en el Sprint 3. Cada PR que las implementa agrega sus fil
 
 | Requisito | Historia | Prioridad | Decisiones | Issue                                                | Estado    |
 | --------- | -------- | --------- | ---------- | ---------------------------------------------------- | --------- |
-| RF-13     | HU-10    | Should    | D-25       | [#19](https://github.com/raztor/farmacias/issues/19) | Pendiente |
+| RF-13     | HU-10    | Should    | D-25       | [#19](https://github.com/raztor/farmacias/issues/19) | En curso  |
 | RF-14     | HU-11    | Should    | D-28       | [#20](https://github.com/raztor/farmacias/issues/20) | Pendiente |
-| RF-15     | HU-12    | Should    | D-26, D-27 | [#21](https://github.com/raztor/farmacias/issues/21) | Pendiente |
+| RF-15     | HU-12    | Should    | D-26, D-27 | [#21](https://github.com/raztor/farmacias/issues/21) | En curso  |
 | RF-16     | HU-13    | Could     | D-29       | [#22](https://github.com/raztor/farmacias/issues/22) | Pendiente |
 | —         | HU-14    | Could     | D-30       | [#23](https://github.com/raztor/farmacias/issues/23) | Pendiente |
 | OE-07     | T-15     | Should    | —          | [#44](https://github.com/raztor/farmacias/issues/44) | Pendiente |

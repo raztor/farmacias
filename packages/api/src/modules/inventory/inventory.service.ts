@@ -1,4 +1,4 @@
-import type { ActorRole } from "@repo/shared";
+import type { ActorRole, StockMovementReason } from "@repo/shared";
 
 import type { AuditEntryInput, AuditWriter } from "../audit";
 
@@ -16,8 +16,9 @@ export type LockedStock = { productId: string; onHand: number };
 export type StockMovementInput = {
   productId: string;
   delta: number;
-  reason: "sale" | "cancellation_restore";
-  orderId: string;
+  reason: StockMovementReason;
+  /** Required for `sale` / `cancellation_restore`; `null` for receipts and adjustments. */
+  orderId: string | null;
   paymentId: string | null;
   actorId: string | null;
   quantityBefore: number;

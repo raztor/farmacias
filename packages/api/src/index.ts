@@ -27,6 +27,16 @@ export {
   type ProductSummary,
 } from "./modules/catalog";
 export { type HealthStatus } from "./modules/health";
+export {
+  type AlertsResult,
+  type InventoryItemView,
+  type ListInventoryInput,
+  type ListInventoryResult,
+  type MovementsResult,
+  type StockAdjustmentResult,
+  type StockLevel,
+  type StockMovementView,
+} from "./modules/inventory";
 // Ordering services for trusted server code (seed scripts); clients use the tRPC router.
 export {
   createOrderTransitionServiceFromDeps,
